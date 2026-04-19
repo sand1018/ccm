@@ -6,17 +6,25 @@ import boxen from "boxen";
  * @param {Object} config 配置对象
  * @param {string} title 标题
  * @param {string} titleColor 标题颜色
- * @param {string} tokenKey Token字段名
+ * @param {string} credentialKey 凭证字段名
+ * @param {string} credentialLabel 凭证显示名称
  * @returns {string} 格式化后的配置信息
  */
-function formatConfigItem(config, title, titleColor, tokenKey, setupCommand) {
+function formatConfigItem(
+  config,
+  title,
+  titleColor,
+  credentialKey,
+  credentialLabel,
+  setupCommand
+) {
   if (!config) {
     return chalk.yellow(title + "\n") + chalk.gray(`   未配置，请使用 ${setupCommand} 设置`);
   }
 
   return titleColor(title + "\n") +
     `${chalk.white("站点：")} ${chalk.cyan(config.siteName)}\n` +
-    `${chalk.white("Token名称：")} ${chalk.gray(config[tokenKey])}\n` +
+    `${chalk.white(`${credentialLabel}：`)} ${chalk.gray(config[credentialKey])}\n` +
     `${chalk.white("更新时间：")} ${chalk.gray(new Date(config.updatedAt).toLocaleString())}`;
 }
 
@@ -24,16 +32,23 @@ function formatConfigItem(config, title, titleColor, tokenKey, setupCommand) {
  * 格式化当前状态显示
  * @param {Object} currentConfig 当前Claude配置
  * @param {Object} currentCodexConfig 当前Codex配置
+ * @param {Object} currentGeminiConfig 当前Gemini配置
  * @returns {string} 格式化后的状态信息
  */
-function formatStatus(currentConfig, currentCodexConfig = null) {
-  if (!currentConfig && !currentCodexConfig) {
+function formatStatus(
+  currentConfig,
+  currentCodexConfig = null,
+  currentGeminiConfig = null
+) {
+  if (!currentConfig && !currentCodexConfig && !currentGeminiConfig) {
     return boxen(
       chalk.yellow("⚠️  当前没有配置\n\n") +
         chalk.white("请使用 ") +
         chalk.cyan("ccm api") +
         chalk.white(" 或 ") +
         chalk.cyan("ccm codexapi") +
+        chalk.white(" 或 ") +
+        chalk.cyan("ccm geminiapi") +
         chalk.white(" 来设置配置"),
       {
         padding: 1,
@@ -54,18 +69,33 @@ function formatStatus(currentConfig, currentCodexConfig = null) {
     "🤖 Claude Code API 配置",
     chalk.blue.bold,
     "tokenName",
+    "Token名称",
     "ccm api"
   );
 
   // Codex配置
-  if (currentCodexConfig || currentConfig) {
+  if (currentCodexConfig || currentConfig || currentGeminiConfig) {
     statusContent += "\n\n";
     statusContent += formatConfigItem(
       currentCodexConfig,
       "💻 Codex API 配置",
       chalk.magenta.bold,
       "apiKeyName",
+      "API Key名称",
       "ccm codexapi"
+    );
+  }
+
+  // Gemini配置
+  if (currentGeminiConfig || currentConfig || currentCodexConfig) {
+    statusContent += "\n\n";
+    statusContent += formatConfigItem(
+      currentGeminiConfig,
+      "🪐 Gemini API 配置",
+      chalk.yellow.bold,
+      "apiKeyName",
+      "API Key名称",
+      "ccm geminiapi"
     );
   }
 
@@ -199,6 +229,28 @@ function formatCodexSwitchSuccess(config) {
 }
 
 /**
+ * 格式化Gemini配置切换成功信息
+ * @param {Object} config 配置信息
+ * @returns {string} 格式化后的成功信息
+ */
+function formatGeminiSwitchSuccess(config) {
+  const successContent =
+    `${chalk.white("站点: ")} ${chalk.cyan(config.siteName)}\n` +
+    `${chalk.white("Model: ")} ${chalk.cyan(config.model || "未设置")}\n` +
+    `${chalk.white("API Key: ")} ${chalk.cyan(formatToken(config.apiKey))}\n` +
+    `${chalk.white("Base URL: ")} ${chalk.cyan(config.baseUrl || "未设置")}`;
+
+  return boxen(successContent, {
+    padding: 1,
+    margin: { top: 1, bottom: 0, left: 0, right: 0 },
+    borderStyle: "round",
+    borderColor: "green",
+    title: "✨ 配置切换成功！！！！",
+    titleAlignment: "center",
+  });
+}
+
+/**
  * 格式化Token显示（前7位 + ... + 后6位）
  * @param {string} token Token字符串
  * @returns {string} 格式化后的Token
@@ -277,12 +329,14 @@ ${chalk.white("智能选择:")}
   • 当前配置会用绿色标识，当前站点用⭐标识
 
 ${chalk.white("配置文件:")}
-  ~/.claude/api_configs.json    API配置文件（包含当前激活配置）
+  ~/.ccm/api_configs.json       API配置文件（包含当前激活配置）
 
 ${chalk.white("使用示例:")}
   ccm api           显示交互菜单
   ccm api --list    列出所有配置
   ccm api --help    显示帮助信息
+  ccm codexapi      管理 Codex API 配置
+  ccm geminiapi     管理 Gemini API 配置
 `;
 }
 
@@ -291,27 +345,36 @@ ${chalk.white("使用示例:")}
  */
 function formatMainHelp() {
   return `
-${chalk.cyan.bold('CCM - Claude Code 配置管理工具')}
+${chalk.cyan.bold('CCM - Claude / Codex / Gemini 配置管理工具')}
 
 ${chalk.white("主要功能:")}
-  📡 Claude配置管理     切换、查看、添加、删除API配置
+  📡 Claude Code配置管理  切换、查看、添加、删除API配置
+  💻 Codex配置管理      切换、查看、编辑Codex API配置
+  🪐 Gemini配置管理     切换、查看、编辑Gemini API配置
+  ⬆️ 版本升级        检查并升级到最新版本
   📊 状态查看       查看当前使用的配置信息
   ❓ 帮助文档       显示详细使用说明
 
 ${chalk.white("基本命令:")}
   ccm             启动交互式界面
-  ccm api         Claude配置管理
+  ccm api         Claude Code配置管理
+  ccm codexapi    Codex配置管理
+  ccm geminiapi   Gemini配置管理
+  ccm update      检查并升级到最新版本
   ccm status      查看当前状态
   ccm --version   查看版本信息
   ccm --help      显示帮助信息
 
 ${chalk.white("配置文件:")}
-  ~/.claude/api_configs.json    API配置文件（包含当前激活配置）
+  ~/.ccm/api_configs.json       API配置文件（包含当前激活配置）
 
 ${chalk.white("使用示例:")}
   ccm api           显示交互菜单
   ccm api --list    列出所有配置
   ccm api --help    显示帮助信息
+  ccm codexapi      管理 Codex API 配置
+  ccm geminiapi     管理 Gemini API 配置
+  ccm update        检查并升级 CCM
 `;
 }
 
@@ -320,6 +383,7 @@ export {
   formatConfigList,
   formatSwitchSuccess,
   formatCodexSwitchSuccess,
+  formatGeminiSwitchSuccess,
   formatError,
   formatWarning,
   formatApiHelp,

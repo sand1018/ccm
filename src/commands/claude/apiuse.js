@@ -29,7 +29,7 @@ class ApiUseCommand {
       if (!await this.configManager.configExists()) {
         spinner.fail();
         showError('配置文件不存在');
-        showInfo('请确保 ~/.claude/api_configs.json 文件存在');
+        showInfo('请确保 ~/.ccm/api_configs.json 文件存在');
         showInfo('可以使用 "ccm api --add" 添加新配置');
         return false;
       }
@@ -129,7 +129,7 @@ class ApiUseCommand {
 
       if (error.message.includes('配置文件不存在')) {
         showInfo('请确保以下文件存在：');
-        console.log(chalk.gray('  ~/.claude/api_configs.json'));
+        console.log(chalk.gray('  ~/.ccm/api_configs.json'));
         showInfo('使用 "ccm api --add" 来创建第一个配置');
       }
 

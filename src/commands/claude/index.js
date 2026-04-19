@@ -31,7 +31,7 @@ class ApiCommand {
   async register(program) {
     const apiCommand = program
       .command('api')
-      .description('Claude配置管理')
+      .description('Claude Code 配置管理')
       .option('-l, --list', '列出所有配置')
       .option('-a, --add', '添加新配置')
       .option('-e, --edit', '编辑配置文件')
@@ -79,7 +79,7 @@ class ApiCommand {
   ccm api --help       显示此帮助信息
 
 配置文件位置:
-  ~/.claude/api_configs.json    API配置文件（包含当前激活配置）
+  ~/.ccm/api_configs.json       API配置文件（包含当前激活配置）
   ~/.claude/settings.json       Claude Code全局配置文件
   ~/.claude/hooks/              YOLO模式脚本目录
 
@@ -95,7 +95,7 @@ class ApiCommand {
    * 显示API命令帮助信息
    */
   showHelp() {
-    console.log(chalk.cyan.bold('📡 CCM API 配置管理工具帮助'));
+    console.log(chalk.cyan.bold('📡 CCM Claude Code 配置管理工具帮助'));
     console.log();
     console.log(chalk.white('用法:'));
     console.log('  ccm api [选项]');
@@ -121,7 +121,7 @@ class ApiCommand {
     console.log('  - 当前使用的配置会用绿色特殊标识，当前站点用⭐标识');
     console.log();
     console.log(chalk.white('配置文件:'));
-    console.log(`  ${chalk.gray('~/.claude/api_configs.json')}    API配置文件（包含当前激活配置）`);
+    console.log(`  ${chalk.gray('~/.ccm/api_configs.json')}       API配置文件（包含当前激活配置）`);
     console.log(`  ${chalk.gray('~/.claude/settings.json')}       Claude Code全局配置文件`);
     console.log(`  ${chalk.gray('~/.claude/hooks/')}              YOLO模式脚本目录`);
     console.log();

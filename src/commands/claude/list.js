@@ -27,8 +27,8 @@ class ListCommand {
         
         const errorMessage = formatError(
           '配置文件不存在',
-          '无法找到 ~/.claude/api_configs.json 文件',
-          '请确保Claude Code已正确安装并配置了API设置'
+          '无法找到 ~/.ccm/api_configs.json 文件',
+          '请确保已正确创建并填写 API 配置文件'
         );
         
         console.log(errorMessage);

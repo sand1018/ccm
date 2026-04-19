@@ -14,7 +14,7 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 
 // 设置程序信息
 program
   .name('ccm')
-  .description('CCM - Claude Code配置管理CLI工具')
+  .description('CCM - 多 AI CLI 配置管理工具')
   .version(packageJson.version);
 
 // 导入主程序入口

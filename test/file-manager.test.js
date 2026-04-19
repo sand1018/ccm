@@ -20,6 +20,15 @@ test("FileManager 返回基于清单解析后的 entries", () => {
   assert.equal(codex.name, "Codex配置");
   assert.ok(Array.isArray(codex.entries));
   assert.ok(
+    manager
+      .getCategoryPaths("claudeCode")
+      .entries.some(
+        (entry) =>
+          entry.key === "claude.mcpUserConfig" &&
+          entry.path === path.join(os.homedir(), ".claude.json")
+      )
+  );
+  assert.ok(
     codex.entries.some(
       (entry) =>
         entry.key === "codex.agentsOverride" &&

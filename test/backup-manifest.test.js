@@ -16,6 +16,7 @@ test("备份清单覆盖必要的全局 Claude、Codex 和 Gemini 路径", () =>
   const geminiEntries = manifest.categories.geminiCli.entries.map((entry) => entry.path);
 
   assert.ok(claudeEntries.includes("~/.claude/config.json"));
+  assert.ok(claudeEntries.includes("~/.claude.json"));
   assert.ok(codexEntries.includes("~/.codex/AGENTS.override.md"));
   assert.ok(codexEntries.includes("~/.codex/prompts"));
   assert.ok(codexEntries.includes("~/.agents/skills"));
@@ -39,6 +40,7 @@ test("备份清单使用稳定的逻辑 key 作为恢复主键", () => {
   const geminiKeys = manifest.categories.geminiCli.entries.map((entry) => entry.key);
 
   assert.ok(claudeKeys.includes("claude.config"));
+  assert.ok(claudeKeys.includes("claude.mcpUserConfig"));
   assert.ok(claudeKeys.includes("claude.globalInstructions"));
   assert.ok(codexKeys.includes("codex.config"));
   assert.ok(codexKeys.includes("codex.agentsOverride"));

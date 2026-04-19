@@ -46,7 +46,11 @@ class RestoreManager {
         return;
       }
 
-      const confirmed = await this.confirmRestore(selectedBackup, selectedCategories);
+      const confirmed = await this.confirmRestore(
+        selectedBackup,
+        selectedCategories,
+        backupData
+      );
       if (!confirmed) {
         console.log(chalk.yellow("ℹ️ 用户取消恢复操作"));
         return;
@@ -224,12 +228,18 @@ class RestoreManager {
    * 确认恢复操作
    * @param {Object} selectedBackup 选择的备份文件
    * @param {Array} selectedCategories 选择的类别
+   * @param {Object} backupData 备份数据
    * @returns {boolean} 是否确认恢复
    */
-  async confirmRestore(selectedBackup, selectedCategories) {
+  async confirmRestore(selectedBackup, selectedCategories, backupData) {
     console.log(chalk.yellow("\n⚠️ 恢复操作将会覆盖现有的配置文件！"));
     console.log(chalk.gray(`备份文件: ${selectedBackup.name}`));
     console.log(chalk.gray(`恢复类别: ${selectedCategories.join(", ")}`));
+
+    const restoreNotes = this.buildRestoreNotes(backupData, selectedCategories);
+    for (const note of restoreNotes) {
+      console.log(chalk.blue(`ℹ️ ${note}`));
+    }
 
     const { confirmed } = await inquirer.prompt([
       {
@@ -241,6 +251,31 @@ class RestoreManager {
     ]);
 
     return confirmed;
+  }
+
+  /**
+   * 构建恢复确认阶段需要展示的提示
+   * @param {Object} backupData 备份数据
+   * @param {Array} selectedCategories 选择的类别
+   * @returns {Array<string>} 提示列表
+   */
+  buildRestoreNotes(backupData, selectedCategories) {
+    const notes = [];
+
+    for (const category of selectedCategories || []) {
+      const categoryData = backupData?.categories?.[category];
+      const hasClaudeMcpEntry = (categoryData?.entries || []).some(
+        (entry) => entry.key === "claude.mcpUserConfig"
+      );
+
+      if (hasClaudeMcpEntry) {
+        notes.push(
+          "Claude MCP 将只合并恢复 ~/.claude.json 的根级 mcpServers，不会整文件覆盖其他字段"
+        );
+      }
+    }
+
+    return notes;
   }
 
   /**
@@ -458,7 +493,8 @@ class RestoreManager {
 
         try {
           await fs.ensureDir(path.dirname(targetPath));
-          await fs.writeFile(targetPath, Buffer.from(entry.contentBase64, "base64"));
+          const content = await this.buildRestoreContent(entry, targetPath);
+          await fs.writeFile(targetPath, content);
           restoredFiles++;
           console.log(chalk.gray(`✅ 恢复文件: ${entry.key} -> ${targetPath}`));
         } catch (error) {
@@ -469,6 +505,69 @@ class RestoreManager {
     }
 
     return { restoredFiles, failedFiles };
+  }
+
+  /**
+   * 生成恢复时实际写入的文件内容
+   * @param {Object} entry 备份条目
+   * @param {string} targetPath 目标路径
+   * @returns {Promise<Buffer>} 写入内容
+   */
+  async buildRestoreContent(entry, targetPath) {
+    const rawContent = Buffer.from(entry.contentBase64, "base64");
+
+    if (entry.key === "claude.mcpUserConfig") {
+      return this.mergeClaudeUserMcpConfig(targetPath, rawContent);
+    }
+
+    return rawContent;
+  }
+
+  /**
+   * 恢复 Claude 用户级 MCP 配置时，仅替换根级 mcpServers，保留其他字段
+   * @param {string} targetPath 目标路径
+   * @param {Buffer} rawContent 备份内容
+   * @returns {Promise<Buffer>} 合并后的内容
+   */
+  async mergeClaudeUserMcpConfig(targetPath, rawContent) {
+    let incomingConfig;
+    try {
+      incomingConfig = JSON.parse(rawContent.toString("utf8"));
+    } catch (error) {
+      return rawContent;
+    }
+
+    if (
+      !incomingConfig ||
+      typeof incomingConfig !== "object" ||
+      Array.isArray(incomingConfig)
+    ) {
+      return rawContent;
+    }
+
+    let currentConfig = {};
+    if (await fs.pathExists(targetPath)) {
+      try {
+        const currentRaw = await fs.readFile(targetPath, "utf8");
+        const parsedCurrent = JSON.parse(currentRaw);
+        if (
+          parsedCurrent &&
+          typeof parsedCurrent === "object" &&
+          !Array.isArray(parsedCurrent)
+        ) {
+          currentConfig = parsedCurrent;
+        }
+      } catch (error) {
+        return rawContent;
+      }
+    }
+
+    const mergedConfig = {
+      ...currentConfig,
+      mcpServers: incomingConfig.mcpServers || {},
+    };
+
+    return Buffer.from(JSON.stringify(mergedConfig, null, 2));
   }
 
   /**
@@ -490,7 +589,10 @@ class RestoreManager {
       if (entry.relativePath === "." || !entry.relativePath) {
         return matchingEntry.path;
       }
-      return path.join(matchingEntry.path, entry.relativePath);
+      return path.join(
+        matchingEntry.path,
+        ...this.splitPortablePathSegments(entry.relativePath)
+      );
     }
 
     if (entry.portablePath) {
@@ -513,26 +615,38 @@ class RestoreManager {
    * @returns {string} 目标路径
    */
   resolvePortablePath(portablePath) {
-    if (portablePath === "~") {
+    const normalized = portablePath.replace(/\\/g, "/");
+
+    if (normalized === "~") {
       return os.homedir();
     }
 
-    if (portablePath.startsWith("~/")) {
-      return path.join(os.homedir(), portablePath.slice(2));
+    if (normalized.startsWith("~/")) {
+      return path.join(os.homedir(), ...this.splitPortablePathSegments(normalized.slice(2)));
     }
 
-    const normalized = portablePath.replace(/\\/g, "/");
     const windowsHomeMatch = normalized.match(/^[A-Za-z]:\/Users\/[^/]+\/(.+)$/);
     if (windowsHomeMatch) {
-      return path.join(os.homedir(), ...windowsHomeMatch[1].split("/"));
+      return path.join(os.homedir(), ...this.splitPortablePathSegments(windowsHomeMatch[1]));
     }
 
     const posixHomeMatch = normalized.match(/^\/(?:Users|home)\/[^/]+\/(.+)$/);
     if (posixHomeMatch) {
-      return path.join(os.homedir(), ...posixHomeMatch[1].split("/"));
+      return path.join(os.homedir(), ...this.splitPortablePathSegments(posixHomeMatch[1]));
     }
 
-    return portablePath;
+    return normalized;
+  }
+
+  /**
+   * 将可移植路径拆分为当前平台可 join 的路径段
+   * @param {string} portablePath 可移植路径
+   * @returns {Array<string>} 路径段
+   */
+  splitPortablePathSegments(portablePath) {
+    return String(portablePath)
+      .split(/[\\/]+/)
+      .filter(Boolean);
   }
 
   /**

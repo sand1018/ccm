@@ -17,18 +17,68 @@ class CodexCommand {
   }
 
   /**
-   * 注册方法已移除 - Codex功能只能通过主菜单 ccm 进入
-   * 不支持独立命令行调用
+   * 注册Codex命令到commander
+   * @param {Object} program commander实例
    */
+  async register(program) {
+    const codexCommand = program
+      .command('codexapi')
+      .description('Codex 配置管理')
+      .option('-l, --list', '列出所有 Codex 配置')
+      .option('-e, --edit', '编辑 Codex 配置文件')
+      .option('-o, --official', '切换到官方 OAuth 认证模式')
+      .option('-y, --yolo', '开启或关闭 YOLO 模式')
+      .option('-h, --help', '显示 Codex 命令帮助信息')
+      .action(async (options) => {
+        if (options.help) {
+          this.showHelp();
+          return;
+        }
+
+        if (options.list) {
+          await this.listCodexConfigs();
+          return;
+        }
+
+        if (options.edit) {
+          await this.subCommands.edit.execute([]);
+          return;
+        }
+
+        if (options.official) {
+          await this.useOfficialAuth();
+          return;
+        }
+
+        if (options.yolo) {
+          await this.toggleYoloMode();
+          return;
+        }
+
+        await this.showInteractiveMenu();
+      });
+
+    codexCommand.addHelpText('after', `
+
+示例:
+  ccm codexapi            显示交互式 Codex 管理菜单
+  ccm codexapi --list     列出所有 Codex 配置
+  ccm codexapi --edit     编辑 Codex 配置文件
+  ccm codexapi --official 切换到官方 OAuth 认证模式
+  ccm codexapi --yolo     开启或关闭 YOLO 模式
+
+配置文件位置:
+  ~/.ccm/api_configs.json  站点配置文件
+  ~/.codex/config.toml     Codex 主配置文件
+  ~/.codex/auth.json       Codex 认证文件
+`);
+  }
 
   /**
    * 显示Codex命令帮助信息
    */
   showHelp() {
     console.log(chalk.cyan.bold('💻 CCM Codex 配置管理工具帮助'));
-    console.log();
-    console.log(chalk.white('访问方式:'));
-    console.log('  只能通过主菜单访问：运行 ccm 选择 "💻 CodexAPI"');
     console.log();
     console.log(chalk.white('功能:'));
     console.log('  🔄 切换配置    选择不同的Codex服务提供商');
@@ -38,15 +88,15 @@ class CodexCommand {
     console.log('  🚀 YOLO模式    开启/关闭最宽松配置模式（approval_policy=never, sandbox_mode=danger-full-access）');
     console.log();
     console.log(chalk.white('配置文件:'));
+    console.log(`  ${chalk.gray('~/.ccm/api_configs.json')}      站点配置文件`);
     console.log(`  ${chalk.gray('~/.codex/config.toml')}     Codex主配置文件`);
     console.log(`  ${chalk.gray('~/.codex/auth.json')}       Codex认证文件`);
     console.log();
-    console.log(chalk.white('使用流程:'));
-    console.log(`  ${chalk.green('ccm')}                    # 启动主菜单`);
-    console.log(`  ${chalk.green('选择 💻 CodexAPI')}         # 进入Codex管理`);
-    console.log(`  ${chalk.green('选择切换配置')}              # 配置Codex服务`);
-    console.log(`  ${chalk.green('选择官方认证')}              # 切换OAuth认证`);
-    console.log(`  ${chalk.green('选择YOLO模式')}              # 开启/关闭最宽松模式`);
+    console.log(chalk.white('示例:'));
+    console.log(`  ${chalk.green('ccm codexapi')}            # 显示交互式菜单`);
+    console.log(`  ${chalk.green('ccm codexapi --list')}     # 查看所有 Codex 配置`);
+    console.log(`  ${chalk.green('ccm codexapi --official')} # 切换官方 OAuth 认证`);
+    console.log(`  ${chalk.green('ccm codexapi --yolo')}     # 开启/关闭 YOLO 模式`);
   }
 
   /**

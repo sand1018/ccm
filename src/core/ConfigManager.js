@@ -12,8 +12,10 @@ class ConfigManager {
     this.homeDir = os.homedir();
     this.claudeDir = path.join(this.homeDir, ".claude");
     this.ccmDir = path.join(this.homeDir, ".ccm");
+    this.geminiDir = path.join(this.homeDir, ".gemini");
     this.settingsPath = path.join(this.claudeDir, "settings.json");
     this.claudeConfigPath = path.join(this.claudeDir, "config.json");
+    this.geminiEnvPath = path.join(this.geminiDir, ".env");
 
     // 查找配置文件路径，优先使用 .ccm，兼容 .claude
     this.configPath = this.findConfigPath();
@@ -46,6 +48,7 @@ class ConfigManager {
     try {
       await fs.ensureDir(this.claudeDir);
       await fs.ensureDir(this.ccmDir);
+      await fs.ensureDir(this.geminiDir);
     } catch (error) {
       throw new Error(`创建配置目录失败: ${error.message}`);
     }
@@ -109,6 +112,20 @@ class ConfigManager {
       return allConfigs.currentCodexConfig || null;
     } catch (error) {
       console.warn(chalk.yellow("⚠️  读取当前Codex配置失败:"), error.message);
+      return null;
+    }
+  }
+
+  /**
+   * 获取当前使用的Gemini配置
+   * @returns {Object} 当前Gemini配置
+   */
+  async getCurrentGeminiConfig() {
+    try {
+      const allConfigs = await this.getAllConfigs();
+      return allConfigs.currentGeminiConfig || null;
+    } catch (error) {
+      console.warn(chalk.yellow("⚠️  读取当前Gemini配置失败:"), error.message);
       return null;
     }
   }
@@ -188,6 +205,39 @@ class ConfigManager {
       );
     } catch (error) {
       throw new Error(`保存当前Codex配置失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 保存当前Gemini配置
+   * @param {Object} config Gemini配置对象
+   */
+  async saveCurrentGeminiConfig(config) {
+    try {
+      await this.ensureConfigDir();
+
+      const configToSave = {
+        site: config.site,
+        siteName: config.siteName,
+        model: config.model,
+        apiKey: config.apiKey,
+        apiKeyName: config.apiKeyName,
+        baseUrl: config.baseUrl,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const allConfigs = await this.getAllConfigs();
+      allConfigs.currentGeminiConfig = configToSave;
+
+      const normalizedConfig = this.normalizeConfig(allConfigs);
+
+      await fs.writeFile(
+        this.configPath,
+        JSON.stringify(normalizedConfig, null, 2),
+        "utf8"
+      );
+    } catch (error) {
+      throw new Error(`保存当前Gemini配置失败: ${error.message}`);
     }
   }
 
@@ -433,6 +483,176 @@ class ConfigManager {
     }
 
     return true;
+  }
+
+  /**
+   * 获取Gemini配置
+   * @param {Object} siteConfig 站点配置对象
+   * @returns {Object} Gemini配置对象
+   */
+  getGeminiConfig(siteConfig) {
+    if (siteConfig.gemini) {
+      return siteConfig.gemini;
+    }
+
+    throw new Error("站点配置缺少gemini字段");
+  }
+
+  /**
+   * 验证Gemini配置格式
+   * @param {Object} geminiConfig Gemini配置对象
+   * @returns {boolean} 是否有效
+   */
+  validateGeminiSiteConfig(geminiConfig) {
+    if (!geminiConfig || typeof geminiConfig !== "object") {
+      return false;
+    }
+
+    if (!geminiConfig.env || typeof geminiConfig.env !== "object") {
+      return false;
+    }
+
+    const apiKeyConfig = geminiConfig.env.GEMINI_API_KEY;
+    if (!apiKeyConfig) {
+      return false;
+    }
+
+    if (typeof apiKeyConfig === "string") {
+      return Boolean(apiKeyConfig.trim());
+    }
+
+    if (typeof apiKeyConfig === "object" && apiKeyConfig !== null) {
+      return Object.keys(apiKeyConfig).length > 0;
+    }
+
+    return false;
+  }
+
+  /**
+   * 切换Gemini配置
+   * @param {string} site 站点标识
+   * @param {string} apiKey API Key
+   * @param {Object} siteConfig 站点配置对象
+   * @returns {Object} 当前Gemini配置
+   */
+  async switchGeminiConfig(site, apiKey, siteConfig) {
+    try {
+      const geminiConfig = this.getGeminiConfig(siteConfig);
+      if (!this.validateGeminiSiteConfig(geminiConfig)) {
+        throw new Error("Gemini配置格式无效");
+      }
+
+      const rawApiKeys = geminiConfig.env.GEMINI_API_KEY;
+      const apiKeys =
+        typeof rawApiKeys === "string"
+          ? { "默认API Key": rawApiKeys }
+          : rawApiKeys;
+      const apiKeyName = Object.keys(apiKeys).find((key) => apiKeys[key] === apiKey);
+
+      const currentConfig = {
+        site,
+        siteName: site,
+        apiKey,
+        apiKeyName: apiKeyName || "默认API Key",
+        model: geminiConfig.env.GEMINI_MODEL || null,
+        baseUrl: geminiConfig.env.GOOGLE_GEMINI_BASE_URL || null,
+      };
+
+      await this.writeGeminiEnv({
+        GEMINI_API_KEY: apiKey,
+        ...(geminiConfig.env.GEMINI_MODEL
+          ? { GEMINI_MODEL: geminiConfig.env.GEMINI_MODEL }
+          : {}),
+        ...(geminiConfig.env.GOOGLE_GEMINI_BASE_URL
+          ? { GOOGLE_GEMINI_BASE_URL: geminiConfig.env.GOOGLE_GEMINI_BASE_URL }
+          : {}),
+      });
+
+      await this.saveCurrentGeminiConfig(currentConfig);
+      return currentConfig;
+    } catch (error) {
+      throw new Error(`切换Gemini配置失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 写入 Gemini .env 配置
+   * @param {Object} envConfig 需要写入的环境变量
+   */
+  async writeGeminiEnv(envConfig) {
+    await this.ensureConfigDir();
+
+    let existingEnv = {};
+    if (await fs.pathExists(this.geminiEnvPath)) {
+      const content = await fs.readFile(this.geminiEnvPath, "utf8");
+      existingEnv = this.parseEnvFile(content);
+    }
+
+    const managedKeys = [
+      "GEMINI_API_KEY",
+      "GEMINI_MODEL",
+      "GOOGLE_GEMINI_BASE_URL",
+    ];
+
+    for (const key of managedKeys) {
+      delete existingEnv[key];
+    }
+
+    const mergedEnv = {
+      ...existingEnv,
+      ...envConfig,
+    };
+
+    await fs.writeFile(this.geminiEnvPath, this.stringifyEnvFile(mergedEnv), "utf8");
+  }
+
+  /**
+   * 解析 .env 文件
+   * @param {string} content 文件内容
+   * @returns {Object} 环境变量对象
+   */
+  parseEnvFile(content) {
+    const result = {};
+
+    for (const line of content.split(/\r?\n/)) {
+      if (!line || line.trim().startsWith("#")) {
+        continue;
+      }
+
+      const separatorIndex = line.indexOf("=");
+      if (separatorIndex === -1) {
+        continue;
+      }
+
+      const key = line.slice(0, separatorIndex).trim();
+      const value = line.slice(separatorIndex + 1).trim();
+      if (!key) {
+        continue;
+      }
+
+      result[key] = value.replace(/^"(.*)"$/, "$1");
+    }
+
+    return result;
+  }
+
+  /**
+   * 序列化 .env 文件
+   * @param {Object} envObject 环境变量对象
+   * @returns {string} 序列化结果
+   */
+  stringifyEnvFile(envObject) {
+    const lines = [];
+
+    for (const [key, value] of Object.entries(envObject)) {
+      if (value === undefined || value === null || value === "") {
+        continue;
+      }
+
+      lines.push(`${key}=${String(value)}`);
+    }
+
+    return lines.join("\n") + "\n";
   }
 
   /**

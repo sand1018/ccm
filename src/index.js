@@ -63,6 +63,9 @@ async function showInteractiveMenu(commandRegistry) {
       } else if (choice === "codexapi") {
         // 进入Codex子菜单（子菜单自己处理循环）
         await commandRegistry.executeCommand("codexapi", []);
+      } else if (choice === "geminiapi") {
+        // 进入Gemini子菜单（子菜单自己处理循环）
+        await commandRegistry.executeCommand("geminiapi", []);
       } else if (choice === "backup") {
         // 进入备份子菜单（子菜单自己处理循环）
         await commandRegistry.executeCommand("backup", []);

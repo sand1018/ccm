@@ -31,6 +31,13 @@
         },
         {
           "type": "file",
+          "key": "claude.mcpUserConfig",
+          "label": ".claude.json (仅用户级 mcpServers)",
+          "path": "~/.claude.json",
+          "required": false
+        },
+        {
+          "type": "file",
           "key": "claude.globalInstructions",
           "label": "CLAUDE.md",
           "path": "~/.claude/CLAUDE.md",

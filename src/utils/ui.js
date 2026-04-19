@@ -37,7 +37,7 @@ async function showBanner(updateInfo = null) {
   let content =
     chalk.cyan.bold(banner) +
     "\n" +
-    chalk.white("CCM - Claude Code配置管理CLI工具") +
+    chalk.white("CCM - 多 AI CLI 配置管理工具") +
     "\n" +
     versionText;
 
@@ -51,7 +51,7 @@ async function showBanner(updateInfo = null) {
       chalk.green(updateInfo.latest) +
       "\n" +
       chalk.gray("运行 ") +
-      chalk.cyan("npm install -g @journey1018/ccm") +
+      chalk.cyan("ccm update") +
       chalk.gray(" 更新");
   }
 
@@ -81,12 +81,13 @@ async function getCurrentStatusBrief() {
     const { default: ConfigManager } = await import("../core/ConfigManager.js");
     const configManager = new ConfigManager();
 
-    const [currentConfig, currentCodexConfig] = await Promise.all([
+    const [currentConfig, currentCodexConfig, currentGeminiConfig] = await Promise.all([
       configManager.getCurrentConfig().catch(() => null),
       configManager.getCurrentCodexConfig().catch(() => null),
+      configManager.getCurrentGeminiConfig().catch(() => null),
     ]);
 
-    if (!currentConfig && !currentCodexConfig) {
+    if (!currentConfig && !currentCodexConfig && !currentGeminiConfig) {
       return null;
     }
 
@@ -115,6 +116,15 @@ async function getCurrentStatusBrief() {
       statusLines.push(`💻 Codex: ${siteInfo}-${apiKeyInfo}`);
     }
 
+    // Gemini配置信息
+    if (currentGeminiConfig) {
+      const siteInfo = chalk.yellow(currentGeminiConfig.siteName || "未知站点");
+      const apiKeyInfo = chalk.gray(
+        currentGeminiConfig.apiKeyName || "默认API Key"
+      );
+      statusLines.push(`🪐 Gemini: ${siteInfo}-${apiKeyInfo}`);
+    }
+
     return statusLines.join("\n");
   } catch (error) {
     return null;
@@ -129,7 +139,7 @@ async function showMainMenu() {
 
   const choices = [
     {
-      name: "📡 Claude Code API - Claude Code Claude配置管理",
+      name: "📡 Claude Code API - Claude Code 配置管理",
       value: "api",
       short: "Claude Code API",
     },
@@ -137,6 +147,11 @@ async function showMainMenu() {
       name: "💻 Codex API - Codex配置管理",
       value: "codexapi",
       short: "CodexAPI",
+    },
+    {
+      name: "🪐 Gemini API - Gemini 配置管理",
+      value: "geminiapi",
+      short: "GeminiAPI",
     },
     {
       name: "🔄 Backup - 备份与恢复",
@@ -167,7 +182,7 @@ async function showMainMenu() {
       name: "choice",
       message: "请选择功能模块：",
       choices,
-      pageSize: 10,
+      pageSize: 12,
     },
   ]);
 
@@ -181,7 +196,7 @@ async function showMainMenu() {
  * @returns {string} 用户选择
  */
 async function showApiMenu(options = {}) {
-  console.log(chalk.cyan.bold("\n📡 Claude配置管理"));
+  console.log(chalk.cyan.bold("\n📡 Claude Code 配置管理"));
   console.log(chalk.gray("═".repeat(40)));
 
   // 构建通知管理菜单项

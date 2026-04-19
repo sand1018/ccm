@@ -257,7 +257,7 @@ class BackupManager {
       return this.createMissingEntry(entry, "文件不存在");
     }
 
-    const buffer = await fs.readFile(entry.path);
+    const buffer = await this.readEntryBuffer(entry);
     const stat = await fs.stat(entry.path);
 
     return {
@@ -274,6 +274,42 @@ class BackupManager {
       encoding: "base64",
       contentBase64: buffer.toString("base64"),
     };
+  }
+
+  /**
+   * 按条目类型读取需要写入备份的数据
+   * @param {Object} entry 文件条目
+   * @returns {Promise<Buffer>} 文件内容
+   */
+  async readEntryBuffer(entry) {
+    const buffer = await fs.readFile(entry.path);
+
+    if (entry.key === "claude.mcpUserConfig") {
+      return this.extractClaudeUserMcpBuffer(buffer);
+    }
+
+    return buffer;
+  }
+
+  /**
+   * 从 ~/.claude.json 中仅提取用户级 mcpServers
+   * @param {Buffer} buffer 原始文件内容
+   * @returns {Buffer} 精简后的 JSON 内容
+   */
+  extractClaudeUserMcpBuffer(buffer) {
+    try {
+      const parsed = JSON.parse(buffer.toString("utf8"));
+      const sanitized = {
+        mcpServers:
+          parsed && typeof parsed === "object" && !Array.isArray(parsed)
+            ? parsed.mcpServers || {}
+            : {},
+      };
+
+      return Buffer.from(JSON.stringify(sanitized, null, 2));
+    } catch (error) {
+      return buffer;
+    }
   }
 
   /**
@@ -338,7 +374,7 @@ class BackupManager {
         key: entry.key,
         rootPath,
         portableRootPath: this.toPortablePath(rootPath),
-        relativePath: path.relative(rootPath, itemPath),
+        relativePath: this.toPortableSubpath(path.relative(rootPath, itemPath)),
         required: entry.required,
         size: stat.size,
         mtime: stat.mtime.toISOString(),
@@ -563,10 +599,23 @@ class BackupManager {
   buildRelativePath(baseDir, targetPath) {
     const relativePath = path.relative(baseDir, targetPath);
     if (relativePath && !relativePath.startsWith("..") && !path.isAbsolute(relativePath)) {
-      return relativePath;
+      return this.toPortableSubpath(relativePath);
     }
 
     return path.basename(targetPath);
+  }
+
+  /**
+   * 统一将相对路径转换为可移植的 POSIX 形式
+   * @param {string} relativePath 相对路径
+   * @returns {string} 可移植相对路径
+   */
+  toPortableSubpath(relativePath) {
+    if (!relativePath || relativePath === ".") {
+      return relativePath || ".";
+    }
+
+    return relativePath.replace(/\\/g, "/");
   }
 
   /**
@@ -579,12 +628,18 @@ class BackupManager {
       return absolutePath;
     }
 
-    if (absolutePath.startsWith(this.fileManager.homeDir)) {
-      const relativePath = path.relative(this.fileManager.homeDir, absolutePath);
+    const normalizedAbsolutePath = absolutePath.replace(/\\/g, "/");
+    const normalizedHomeDir = this.fileManager.homeDir.replace(/\\/g, "/");
+
+    if (
+      normalizedAbsolutePath === normalizedHomeDir ||
+      normalizedAbsolutePath.startsWith(`${normalizedHomeDir}/`)
+    ) {
+      const relativePath = normalizedAbsolutePath.slice(normalizedHomeDir.length).replace(/^\/+/, "");
       return relativePath ? `~/${relativePath}` : "~";
     }
 
-    return absolutePath;
+    return normalizedAbsolutePath;
   }
 
   /**

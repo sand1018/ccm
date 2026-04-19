@@ -37,9 +37,20 @@ class CommandRegistry {
           await this.executeCommand('apiuse', []);
         });
 
-      // 注册Codex命令（仅用于交互式菜单，不注册独立命令）
+      // 注册Codex命令
       const { default: codexCommand } = await import('./codex/index.js');
       this.commands.set('codexapi', codexCommand);
+      await codexCommand.register(program);
+
+      // 注册Gemini命令
+      const { default: geminiCommand } = await import('./gemini/index.js');
+      this.commands.set('geminiapi', geminiCommand);
+      await geminiCommand.register(program);
+
+      // 注册更新命令
+      const { default: updateCommand } = await import('./update.js');
+      this.commands.set('update', updateCommand);
+      await updateCommand.register(program);
 
       // 注册备份命令（仅用于交互式菜单，不注册独立命令）
       const { default: backupCommand } = await import('./backup/index.js');
@@ -147,9 +158,10 @@ class CommandRegistry {
     try {
       const currentConfig = await configManager.getCurrentConfig();
       const currentCodexConfig = await configManager.getCurrentCodexConfig();
+      const currentGeminiConfig = await configManager.getCurrentGeminiConfig();
       const { formatStatus } = await import('../utils/formatter.js');
 
-      console.log(formatStatus(currentConfig, currentCodexConfig));
+      console.log(formatStatus(currentConfig, currentCodexConfig, currentGeminiConfig));
     } catch (error) {
       console.log(chalk.yellow('⚠️  当前没有配置或配置文件不存在'));
     }

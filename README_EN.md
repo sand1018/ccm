@@ -1,4 +1,4 @@
-# CCM - Claude Code Configuration Management Tool
+# CCM - Multi AI CLI Configuration Management Tool
 
 **Language**: [中文](README.md) | [English](README_EN.md)
 
@@ -6,7 +6,7 @@
 [![Downloads](https://img.shields.io/npm/dm/@journey1018/ccm.svg)](https://www.npmjs.com/package/@journey1018/ccm)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-A command-line tool for one-click switching of Claude Code API configurations. Supports multi-site, multi-token management, intelligent configuration merging, WebDAV cloud backup, and no manual file editing required.
+A command-line tool for one-click switching of Claude Code, Codex, and Gemini configurations. Supports multi-site, multi-token management, intelligent configuration merging, WebDAV cloud backup, and no manual file editing required.
 
 ## 📸 Interface Preview
 
@@ -29,7 +29,7 @@ A command-line tool for one-click switching of Claude Code API configurations. S
 - 🚀 **YOLO Mode** - Provides the most permissive configuration mode for Claude Code API and Codex, unconditionally approves all tool usage requests
 - ☁️ **WebDAV Backup** - Support global configuration backup and restore with cross-platform migration between Windows / macOS / Linux (Nutstore and other standard WebDAV services)
   - **CCM Configuration Backup** - 📁 `.ccm/` with `api_configs.json` and related global files
-  - **Claude Code Configuration Backup** - 📄 settings.json 📄 config.json 📄 CLAUDE.md 📁 agents/ 📁 commands/ 📁 skills/
+  - **Claude Code Configuration Backup** - 📄 settings.json 📄 config.json 📄 `.claude.json` (root user-level `mcpServers` only; restore merges it back and preserves other fields) 📄 CLAUDE.md 📁 agents/ 📁 commands/ 📁 skills/
   - **Codex Backup** - 📄 config.toml 📄 auth.json 📄 AGENTS.md 📄 AGENTS.override.md 📁 prompts/ 📁 skills/ 📁 ~/.agents/skills/
   - **Gemini CLI Backup** - 📄 settings.json 📄 .env 📄 GEMINI.md 📁 commands/ 📁 agents/ 📁 skills/
   - **Antigravity Backup** - 📄 antigravity/mcp_config.json 📁 antigravity/skills/ 📁 antigravity/workflows/ 📁 antigravity/global_workflows/
@@ -39,6 +39,9 @@ A command-line tool for one-click switching of Claude Code API configurations. S
 ```bash
 # Global installation
 npm install -g @journey1018/ccm
+
+# Check for updates and upgrade to the latest version
+ccm update
 ```
 
 ## 🚀 Usage
@@ -52,11 +55,26 @@ ccm
 # API configuration management
 ccm api
 
+# Codex configuration management
+ccm codexapi
+
+# Gemini configuration management
+ccm geminiapi
+
 # Quick switch API configuration
 ccm apiuse
 
 # View current status
 ccm status
+
+# Check whether a newer version is available
+ccm update --check
+
+# Check and confirm upgrade
+ccm update
+
+# Upgrade immediately without confirmation
+ccm update --yes
 
 # View help
 ccm --help
@@ -97,6 +115,16 @@ The tool will automatically merge your selected API configuration with existing 
             "base_url": "https://jp.duckcoding.com/v1"
           }
         }
+      },
+      "gemini": {
+        "env": {
+          "GEMINI_API_KEY": {
+            "Primary Key": "gm-xxxxxxxxxxxxxx",
+            "Backup Key": "gm-yyyyyyyyyyyyyy"
+          },
+          "GEMINI_MODEL": "gemini-2.5-pro",
+          "GOOGLE_GEMINI_BASE_URL": "https://generativelanguage.googleapis.com"
+        }
       }
     },
     "XX Public Site 2": {
@@ -135,6 +163,21 @@ The tool will automatically merge your selected API configuration with existing 
             "name": "custom_provider",
             "base_url": "https://api.demo.com/v1"
           }
+        }
+      },
+      // Gemini API configuration (written to ~/.gemini/.env)
+      "gemini": {
+        "env": {
+          // API keys also support two formats:
+          // 1. Object format (multiple API keys)
+          "GEMINI_API_KEY": {
+            "Primary Key": "gm-xxxxxxxxxxxxxx",
+            "Test Key": "gm-zzzzzzzzzzzzzzz"
+          },
+          // 2. String format (single API key, automatically named "Default API Key")
+          // "GEMINI_API_KEY": "gm-xxxxxxxxxxxxxx",
+          "GEMINI_MODEL": "gemini-2.5-flash",
+          "GOOGLE_GEMINI_BASE_URL": "https://proxy.demo.com"
         }
       }
     }

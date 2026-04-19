@@ -102,3 +102,144 @@ test("RestoreManager 的恢复前快照写入 ~/.ccm/restore-snapshots", async (
     }
   }
 });
+
+test("RestoreManager 恢复 claude.mcpUserConfig 时保留 .claude.json 其他字段", async () => {
+  const manager = new RestoreManager();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-restore-claude-mcp-"));
+  const targetFile = path.join(tempDir, ".claude.json");
+
+  await fs.writeFile(
+    targetFile,
+    JSON.stringify(
+      {
+        projects: {
+          "/tmp/private-project": {
+            mcpServers: {
+              privateServer: {
+                command: "node",
+                args: ["private.js"],
+              },
+            },
+          },
+        },
+        hasCompletedOnboarding: true,
+        mcpServers: {
+          oldServer: {
+            command: "old",
+          },
+        },
+      },
+      null,
+      2
+    )
+  );
+
+  manager.fileManager.getCategoryPaths = () => ({
+    name: "Claude Code配置",
+    entries: [
+      {
+        type: "file",
+        key: "claude.mcpUserConfig",
+        path: targetFile,
+      },
+    ],
+  });
+
+  const backupData = {
+    categories: {
+      claudeCode: {
+        name: "Claude Code配置",
+        entries: [
+          {
+            entryType: "file",
+            key: "claude.mcpUserConfig",
+            portablePath: "~/.claude.json",
+            relativePath: ".claude.json",
+            contentBase64: Buffer.from(
+              JSON.stringify(
+                {
+                  mcpServers: {
+                    filesystem: {
+                      command: "npx",
+                      args: ["-y", "@modelcontextprotocol/server-filesystem"],
+                    },
+                  },
+                },
+                null,
+                2
+              )
+            ).toString("base64"),
+          },
+        ],
+      },
+    },
+  };
+
+  try {
+    const result = await manager.restoreV3Entries(
+      backupData,
+      ["claudeCode"],
+      { text: "" }
+    );
+
+    const restored = JSON.parse(await fs.readFile(targetFile, "utf8"));
+
+    assert.equal(result.restoredFiles, 1);
+    assert.equal(result.failedFiles, 0);
+    assert.deepEqual(restored, {
+      projects: {
+        "/tmp/private-project": {
+          mcpServers: {
+            privateServer: {
+              command: "node",
+              args: ["private.js"],
+            },
+          },
+        },
+      },
+      hasCompletedOnboarding: true,
+      mcpServers: {
+        filesystem: {
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-filesystem"],
+        },
+      },
+    });
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("RestoreManager 会为 Claude MCP 合并恢复生成明确提示", () => {
+  const manager = new RestoreManager();
+
+  const notes = manager.buildRestoreNotes(
+    {
+      categories: {
+        claudeCode: {
+          entries: [
+            {
+              entryType: "file",
+              key: "claude.mcpUserConfig",
+            },
+          ],
+        },
+      },
+    },
+    ["claudeCode"]
+  );
+
+  assert.ok(
+    notes.includes("Claude MCP 将只合并恢复 ~/.claude.json 的根级 mcpServers，不会整文件覆盖其他字段")
+  );
+});
+
+test("RestoreManager 会把可移植路径中的反斜杠拆成跨平台路径段", () => {
+  const manager = new RestoreManager();
+
+  assert.deepEqual(manager.splitPortablePathSegments(".codex\\prompts\\team"), [
+    ".codex",
+    "prompts",
+    "team",
+  ]);
+});

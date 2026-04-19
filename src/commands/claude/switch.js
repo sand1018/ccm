@@ -25,7 +25,7 @@ class SwitchCommand {
       if (!await this.configManager.configExists()) {
         spinner.fail();
         showError('配置文件不存在');
-        showInfo('请确保 ~/.claude/api_configs.json 文件存在');
+        showInfo('请确保 ~/.ccm/api_configs.json 文件存在');
         return false; // 配置文件不存在，操作未完成
       }
 
@@ -119,7 +119,7 @@ class SwitchCommand {
 
       if (error.message.includes('配置文件不存在')) {
         showInfo('请确保以下文件存在：');
-        console.log(chalk.gray('  ~/.claude/api_configs.json'));
+        console.log(chalk.gray('  ~/.ccm/api_configs.json'));
       }
 
       return false; // 操作失败

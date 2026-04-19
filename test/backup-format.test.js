@@ -46,6 +46,64 @@ test("BackupManager 会解析 CLAUDE.md 中的 @ 导入文件", async () => {
   }
 });
 
+test("BackupManager 只从 .claude.json 中提取根级 mcpServers", async () => {
+  const manager = new BackupManager();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-claude-mcp-"));
+  const claudeJsonFile = path.join(tempDir, ".claude.json");
+
+  await fs.writeFile(
+    claudeJsonFile,
+    JSON.stringify(
+      {
+        mcpServers: {
+          filesystem: {
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-filesystem"],
+          },
+        },
+        projects: {
+          "/tmp/demo": {
+            mcpServers: {
+              privateServer: {
+                command: "node",
+                args: ["private.js"],
+              },
+            },
+          },
+        },
+        hasCompletedOnboarding: true,
+        tipsHistory: ["tip-1"],
+      },
+      null,
+      2
+    )
+  );
+
+  try {
+    const entry = await manager.collectFileEntry({
+      key: "claude.mcpUserConfig",
+      type: "file",
+      path: claudeJsonFile,
+      required: false,
+    });
+
+    const payload = JSON.parse(
+      Buffer.from(entry.contentBase64, "base64").toString("utf8")
+    );
+
+    assert.deepEqual(payload, {
+      mcpServers: {
+        filesystem: {
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-filesystem"],
+        },
+      },
+    });
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("BackupManager 会在 Gemini 类别中收集 GEMINI.md 的 @ 导入文件", async () => {
   const manager = new BackupManager();
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-gemini-import-"));
@@ -106,4 +164,29 @@ test("BackupManager 生成的备份文件名使用 ccm 前缀", () => {
   const fileName = manager.generateBackupFileName(["codex"]);
 
   assert.match(fileName, /^ccm-codex-\d{8}-\d{6}\.json$/);
+});
+
+test("BackupManager 收集目录文件时统一使用 POSIX relativePath", async () => {
+  const manager = new BackupManager();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-dir-relative-"));
+  const nestedDir = path.join(tempDir, "team");
+  const nestedFile = path.join(nestedDir, "welcome.md");
+
+  await fs.mkdir(nestedDir, { recursive: true });
+  await fs.writeFile(nestedFile, "hello");
+
+  try {
+    const entries = await manager.collectDirectoryEntry({
+      key: "codex.prompts",
+      type: "directory",
+      path: tempDir,
+      required: false,
+    });
+
+    const fileEntry = entries.find((entry) => entry.entryType === "file");
+    assert.ok(fileEntry);
+    assert.equal(fileEntry.relativePath, path.posix.join("team", "welcome.md"));
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
 });
