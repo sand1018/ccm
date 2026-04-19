@@ -67,3 +67,18 @@ test("UpdateCommand 在发现新版本且确认后会执行 npm 全局升级", a
     updateCommand.runUpgradeCommand = originalRunUpgradeCommand;
   }
 });
+
+test("UpdateCommand 在 Windows 上通过 cmd.exe 包装 npm 升级命令", () => {
+  const invocation = updateCommand.buildUpgradeInvocation(
+    "@journey1018/ccm@latest",
+    "win32"
+  );
+
+  assert.match(invocation.command.toLowerCase(), /(^|\\)cmd\.exe$/);
+  assert.deepEqual(invocation.args, [
+    "/d",
+    "/s",
+    "/c",
+    "npm.cmd install -g @journey1018/ccm@latest",
+  ]);
+});

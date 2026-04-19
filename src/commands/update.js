@@ -188,11 +188,13 @@ class UpdateCommand {
    * @returns {Promise<{success:boolean,status?:number,error?:Error}>} 执行结果
    */
   async runUpgradeCommand(packageSpec) {
-    const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+    const invocation = this.buildUpgradeInvocation(packageSpec);
 
-    console.log(chalk.blue(`📦 正在执行: ${npmCommand} install -g ${packageSpec}`));
+    console.log(
+      chalk.blue(`📦 正在执行: ${invocation.command} ${invocation.args.join(" ")}`)
+    );
 
-    const result = spawnSync(npmCommand, ["install", "-g", packageSpec], {
+    const result = spawnSync(invocation.command, invocation.args, {
       stdio: "inherit",
       encoding: "utf8",
     });
@@ -204,6 +206,26 @@ class UpdateCommand {
     return {
       success: result.status === 0,
       status: result.status,
+    };
+  }
+
+  /**
+   * 构建跨平台升级命令
+   * @param {string} packageSpec 包规格
+   * @param {NodeJS.Platform} platform 目标平台
+   * @returns {{command:string,args:Array<string>}} 命令与参数
+   */
+  buildUpgradeInvocation(packageSpec, platform = process.platform) {
+    if (platform === "win32") {
+      return {
+        command: process.env.ComSpec || "cmd.exe",
+        args: ["/d", "/s", "/c", `npm.cmd install -g ${packageSpec}`],
+      };
+    }
+
+    return {
+      command: "npm",
+      args: ["install", "-g", packageSpec],
     };
   }
 }
