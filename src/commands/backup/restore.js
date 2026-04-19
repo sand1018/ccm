@@ -329,10 +329,9 @@ class RestoreManager {
    * @returns {string} 快照目录
    */
   async createPreRestoreSnapshot(backupData, selectedCategories, format) {
+    const snapshotBaseDir = this.getSnapshotBaseDir();
     const snapshotRoot = path.join(
-      os.homedir(),
-      ".ccm",
-      "restore-snapshots",
+      snapshotBaseDir,
       new Date().toISOString().replace(/[:.]/g, "-")
     );
     await fs.ensureDir(snapshotRoot);
@@ -386,8 +385,34 @@ class RestoreManager {
     await fs.writeJson(path.join(snapshotRoot, "snapshot-manifest.json"), snapshotManifest, {
       spaces: 2,
     });
+    await this.cleanupOldSnapshots(snapshotBaseDir);
 
     return snapshotRoot;
+  }
+
+  /**
+   * 获取恢复前快照的根目录
+   * @returns {string} 快照根目录
+   */
+  getSnapshotBaseDir() {
+    return path.join(os.homedir(), ".ccm", "restore-snapshots");
+  }
+
+  /**
+   * 清理旧快照，仅保留最近若干组
+   * @param {string} snapshotBaseDir 快照根目录
+   * @param {number} maxSnapshots 最大保留数量
+   */
+  async cleanupOldSnapshots(snapshotBaseDir, maxSnapshots = 5) {
+    const entries = await fs.readdir(snapshotBaseDir, { withFileTypes: true });
+    const snapshotDirs = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort((left, right) => right.localeCompare(left));
+
+    for (const snapshotName of snapshotDirs.slice(maxSnapshots)) {
+      await fs.remove(path.join(snapshotBaseDir, snapshotName));
+    }
   }
 
   /**

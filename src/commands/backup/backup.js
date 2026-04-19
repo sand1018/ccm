@@ -355,11 +355,10 @@ class BackupManager {
     const items = await fs.readdir(currentPath, { withFileTypes: true });
 
     for (const item of items) {
-      if (this.shouldSkipDirectoryItem(item.name)) {
+      const itemPath = path.join(currentPath, item.name);
+      if (this.shouldSkipDirectoryItem(item.name, itemPath, rootPath, entry)) {
         continue;
       }
-
-      const itemPath = path.join(currentPath, item.name);
 
       if (item.isDirectory()) {
         results.push(...(await this.collectDirectoryFiles(rootPath, itemPath, entry)));
@@ -395,10 +394,27 @@ class BackupManager {
   /**
    * 判断目录采集时是否应跳过当前项
    * @param {string} itemName 目录项名称
+   * @param {string} itemPath 目录项绝对路径
+   * @param {string} rootPath 采集根目录
+   * @param {Object} entry 原始条目
    * @returns {boolean} 是否跳过
    */
-  shouldSkipDirectoryItem(itemName) {
-    return itemName === ".git" || itemName === "node_modules";
+  shouldSkipDirectoryItem(itemName, itemPath, rootPath, entry) {
+    if (itemName === ".git" || itemName === "node_modules") {
+      return true;
+    }
+
+    if (entry?.key === ".ccm") {
+      const relativePath = this.toPortableSubpath(path.relative(rootPath, itemPath));
+      if (
+        relativePath === "restore-snapshots" ||
+        relativePath.startsWith("restore-snapshots/")
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

@@ -225,3 +225,37 @@ test("BackupManager 收集目录时会跳过 .git 和 node_modules", async () =>
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 });
+
+test("BackupManager 备份 CCM 目录时会排除 restore-snapshots", async () => {
+  const manager = new BackupManager();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-dir-snapshots-"));
+  const ccmDir = path.join(tempDir, ".ccm");
+  const configFile = path.join(ccmDir, "api_configs.json");
+  const snapshotFile = path.join(
+    ccmDir,
+    "restore-snapshots",
+    "2026-04-19T00-00-00-000Z",
+    "snapshot-manifest.json"
+  );
+
+  await fs.mkdir(path.dirname(snapshotFile), { recursive: true });
+  await fs.writeFile(configFile, "{}");
+  await fs.writeFile(snapshotFile, '{"createdAt":"2026-04-19T00:00:00.000Z"}');
+
+  try {
+    const entries = await manager.collectDirectoryEntry({
+      key: ".ccm",
+      type: "directory",
+      path: ccmDir,
+      required: true,
+    });
+
+    const relativePaths = entries
+      .filter((entry) => entry.entryType === "file")
+      .map((entry) => entry.relativePath);
+
+    assert.deepEqual(relativePaths, ["api_configs.json"]);
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});

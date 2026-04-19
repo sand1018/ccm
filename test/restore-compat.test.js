@@ -139,6 +139,68 @@ test("RestoreManager 的恢复前快照写入 ~/.ccm/restore-snapshots", async (
   }
 });
 
+test("RestoreManager 只保留最近 5 组恢复前快照", async () => {
+  const manager = new RestoreManager();
+  const originalHomeDir = os.homedir;
+  const tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-restore-prune-"));
+  const snapshotsDir = path.join(tempHome, ".ccm", "restore-snapshots");
+  const sourceDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-restore-prune-source-"));
+  const sourceFile = path.join(sourceDir, "config.toml");
+  const oldSnapshotNames = [
+    "2024-01-01T00-00-00-000Z",
+    "2024-01-02T00-00-00-000Z",
+    "2024-01-03T00-00-00-000Z",
+    "2024-01-04T00-00-00-000Z",
+    "2024-01-05T00-00-00-000Z",
+  ];
+
+  os.homedir = () => tempHome;
+
+  await fs.writeFile(sourceFile, 'model = "gpt-5"\n');
+  for (const snapshotName of oldSnapshotNames) {
+    await fs.mkdir(path.join(snapshotsDir, snapshotName), { recursive: true });
+  }
+
+  manager.fileManager.getCategoryPaths = () => ({
+    name: "Codex配置",
+    entries: [
+      {
+        type: "file",
+        key: "codex.config",
+        path: sourceFile,
+      },
+    ],
+  });
+
+  const backupData = {
+    categories: {
+      codex: {
+        entries: [
+          {
+            entryType: "file",
+            key: "codex.config",
+            relativePath: "config.toml",
+          },
+        ],
+      },
+    },
+  };
+
+  let snapshotRoot;
+  try {
+    snapshotRoot = await manager.createPreRestoreSnapshot(backupData, ["codex"], "v3");
+    const snapshotNames = (await fs.readdir(snapshotsDir)).sort();
+
+    assert.equal(snapshotNames.length, 5);
+    assert.ok(snapshotNames.includes(path.basename(snapshotRoot)));
+    assert.ok(!snapshotNames.includes("2024-01-01T00-00-00-000Z"));
+  } finally {
+    os.homedir = originalHomeDir;
+    await fs.rm(tempHome, { recursive: true, force: true });
+    await fs.rm(sourceDir, { recursive: true, force: true });
+  }
+});
+
 test("RestoreManager 为 ~/.ccm 自身创建恢复前快照时不会复制到自己的子目录", async () => {
   const manager = new RestoreManager();
   const originalHomeDir = os.homedir;
