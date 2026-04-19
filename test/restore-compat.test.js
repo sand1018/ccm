@@ -330,3 +330,88 @@ test("RestoreManager 会把可移植路径中的反斜杠拆成跨平台路径�
     "team",
   ]);
 });
+
+test("RestoreManager 在父级路径已被文件占用时只提示一次并跳过其下文件", async () => {
+  const manager = new RestoreManager();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-restore-blocked-parent-"));
+  const skillsDir = path.join(tempDir, "skills");
+  const blockedDataPath = path.join(skillsDir, "ui-ux-pro-max", "data");
+  const blockedScriptsPath = path.join(skillsDir, "ui-ux-pro-max", "scripts");
+
+  await fs.mkdir(path.dirname(blockedDataPath), { recursive: true });
+  await fs.writeFile(blockedDataPath, "occupied-data");
+  await fs.writeFile(blockedScriptsPath, "occupied-scripts");
+
+  manager.fileManager.getCategoryPaths = () => ({
+    name: "Claude Code配置",
+    entries: [
+      {
+        type: "directory",
+        key: "claude.skills",
+        path: skillsDir,
+      },
+    ],
+  });
+
+  const backupData = {
+    categories: {
+      claudeCode: {
+        name: "Claude Code配置",
+        entries: [
+          {
+            entryType: "file",
+            key: "claude.skills",
+            portableRootPath: "~/.claude/skills",
+            relativePath: path.posix.join("ui-ux-pro-max", "data", "stacks", "react.md"),
+            contentBase64: Buffer.from("react").toString("base64"),
+          },
+          {
+            entryType: "file",
+            key: "claude.skills",
+            portableRootPath: "~/.claude/skills",
+            relativePath: path.posix.join("ui-ux-pro-max", "data", "stacks", "vue.md"),
+            contentBase64: Buffer.from("vue").toString("base64"),
+          },
+          {
+            entryType: "file",
+            key: "claude.skills",
+            portableRootPath: "~/.claude/skills",
+            relativePath: path.posix.join(
+              "ui-ux-pro-max",
+              "scripts",
+              "__pycache__",
+              "index.pyc"
+            ),
+            contentBase64: Buffer.from("bytecode").toString("base64"),
+          },
+        ],
+      },
+    },
+  };
+
+  const capturedErrors = [];
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    capturedErrors.push(args.join(" "));
+  };
+
+  try {
+    const result = await manager.restoreV3Entries(
+      backupData,
+      ["claudeCode"],
+      { text: "" }
+    );
+
+    assert.equal(result.restoredFiles, 0);
+    assert.equal(result.failedFiles, 3);
+    assert.equal(capturedErrors.length, 2);
+    assert.match(capturedErrors[0], /父级路径 .*data 已存在且不是目录/);
+    assert.match(capturedErrors[1], /父级路径 .*scripts 已存在且不是目录/);
+    await assert.rejects(
+      fs.access(path.join(skillsDir, "ui-ux-pro-max", "data", "stacks", "react.md"))
+    );
+  } finally {
+    console.error = originalConsoleError;
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});

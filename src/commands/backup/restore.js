@@ -524,6 +524,7 @@ class RestoreManager {
 
       spinner.text = `恢复 ${categoryData.name} 配置...`;
       const currentPaths = this.fileManager.getCategoryPaths(category);
+      const pendingEntries = [];
 
       for (const entry of categoryData.entries) {
         if (entry.entryType !== "file" || !entry.contentBase64) {
@@ -534,6 +535,25 @@ class RestoreManager {
         if (!targetPath) {
           console.warn(chalk.yellow(`⚠️ 无法映射恢复路径: ${entry.key}`));
           failedFiles++;
+          continue;
+        }
+
+        pendingEntries.push({ entry, targetPath });
+      }
+
+      const blockedTargets = await this.detectBlockedRestoreTargets(pendingEntries);
+      const reportedBlockedPaths = new Set();
+
+      for (const { entry, targetPath } of pendingEntries) {
+        const blocked = blockedTargets.get(targetPath);
+        if (blocked) {
+          failedFiles++;
+
+          if (!reportedBlockedPaths.has(blocked.path)) {
+            console.error(chalk.red(`❌ 恢复文件失败 ${entry.key}: ${blocked.message}`));
+            reportedBlockedPaths.add(blocked.path);
+          }
+
           continue;
         }
 
@@ -551,6 +571,84 @@ class RestoreManager {
     }
 
     return { restoredFiles, failedFiles };
+  }
+
+  /**
+   * 检查恢复目标路径是否被已有文件或同批次文件路径阻塞
+   * @param {Array<{entry:Object,targetPath:string}>} pendingEntries 待恢复条目
+   * @returns {Promise<Map<string,{path:string,message:string}>>} 被阻塞的目标路径
+   */
+  async detectBlockedRestoreTargets(pendingEntries) {
+    const blockedTargets = new Map();
+    const targetPathSet = new Set(pendingEntries.map(({ targetPath }) => targetPath));
+    const statCache = new Map();
+
+    for (const { targetPath } of pendingEntries) {
+      const parentPaths = this.getAncestorPaths(path.dirname(targetPath));
+
+      for (const parentPath of parentPaths) {
+        if (targetPathSet.has(parentPath)) {
+          blockedTargets.set(targetPath, {
+            path: parentPath,
+            message: `父级路径 ${parentPath} 也被作为文件恢复，无法同时写入其子路径，已跳过该路径下的文件`,
+          });
+          break;
+        }
+
+        const stat = await this.getCachedPathStat(parentPath, statCache);
+        if (stat && !stat.isDirectory()) {
+          blockedTargets.set(targetPath, {
+            path: parentPath,
+            message: `父级路径 ${parentPath} 已存在且不是目录，已跳过该路径下的文件`,
+          });
+          break;
+        }
+      }
+    }
+
+    return blockedTargets;
+  }
+
+  /**
+   * 获取路径的所有父级路径
+   * @param {string} targetDir 目标目录
+   * @returns {Array<string>} 父级路径列表，按近到远排序
+   */
+  getAncestorPaths(targetDir) {
+    const ancestors = [];
+    let currentPath = path.resolve(targetDir);
+    const rootPath = path.parse(currentPath).root;
+
+    while (currentPath && currentPath !== rootPath) {
+      ancestors.push(currentPath);
+      currentPath = path.dirname(currentPath);
+    }
+
+    return ancestors;
+  }
+
+  /**
+   * 带缓存地读取路径状态
+   * @param {string} targetPath 目标路径
+   * @param {Map<string, fs.Stats|null>} statCache 状态缓存
+   * @returns {Promise<fs.Stats|null>} 路径状态
+   */
+  async getCachedPathStat(targetPath, statCache) {
+    if (statCache.has(targetPath)) {
+      return statCache.get(targetPath);
+    }
+
+    let stat = null;
+    try {
+      stat = await fs.stat(targetPath);
+    } catch (error) {
+      if (error.code !== "ENOENT" && error.code !== "ENOTDIR") {
+        throw error;
+      }
+    }
+
+    statCache.set(targetPath, stat);
+    return stat;
   }
 
   /**
