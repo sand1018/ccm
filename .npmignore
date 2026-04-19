@@ -1,5 +1,7 @@
 # 开发文件
 test-commands.md
+docs/
+test/
 .git/
 .github/
 .gitignore

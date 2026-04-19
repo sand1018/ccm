@@ -179,7 +179,7 @@ class WebDAVClient {
    */
   async ensureBackupDirectory() {
     try {
-      const backupDir = '/cc-cli-backups';
+      const backupDir = this.getBackupDirectory();
 
       // 检查目录是否存在
       const exists = await this.client.exists(backupDir);
@@ -209,7 +209,7 @@ class WebDAVClient {
       }
 
       const content = JSON.stringify(data, null, 2);
-      const remotePath = `/cc-cli-backups/${fileName}`;
+      const remotePath = `${this.getBackupDirectory()}/${fileName}`;
 
       console.log(chalk.blue(`📤 上传备份文件: ${fileName}`));
 
@@ -237,7 +237,7 @@ class WebDAVClient {
 
       console.log(chalk.blue('📋 获取备份文件列表...'));
 
-      const contents = await this.client.getDirectoryContents('/cc-cli-backups');
+      const contents = await this.client.getDirectoryContents(this.getBackupDirectory());
 
       const backupFiles = contents
         .filter(item => item.type === 'file' && item.filename.endsWith('.json'))
@@ -345,6 +345,14 @@ class WebDAVClient {
     if (url.includes('nextcloud')) return 'Nextcloud';
     if (url.includes('owncloud')) return 'ownCloud';
     return '通用WebDAV';
+  }
+
+  /**
+   * 获取默认远端备份目录
+   * @returns {string} 备份目录
+   */
+  getBackupDirectory() {
+    return '/ccm-backups';
   }
 
   /**
