@@ -34,7 +34,7 @@
     "configuration",
     "tool"
   ],
-  "author": "cjh0 <your-email@example.com>",
+  "author": "journey1018",
   "license": "MIT",
   "dependencies": {
     "boxen": "^5.1.2",

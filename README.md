@@ -30,9 +30,11 @@
 - 🚀 **YOLO 模式** - 为 Claude Code API 和 Codex 提供最宽松配置模式，无条件批准所有工具使用请求
 - 🔔 **智能通知** - Claude Code 响应完成、工具批准等事件时自动推送系统通知，避免长时间等待
 - ☁️ **WebDAV 备份** - 支持全局配置云端备份与恢复，兼容 Windows / macOS / Linux 间迁移（坚果云、其他标准 WebDAV 等）
-  - **CCM 配置备份** - 📁.cc-cli 下 api_config.json 等等
+  - **CCM 配置备份** - 📁 `.ccm/` 下 `api_configs.json` 等全局配置
   - **Claude Code 配置备份** - 📄 settings.json 📄 config.json 📄 CLAUDE.md 📁 agents/ 📁 commands/ 📁 skills/
   - **Codex 备份** - 📄 config.toml 📄 auth.json 📄 AGENTS.md 📄 AGENTS.override.md 📁 prompts/ 📁 skills/ 📁 ~/.agents/skills/
+  - **Gemini CLI 备份** - 📄 settings.json 📄 .env 📄 GEMINI.md 📁 commands/ 📁 agents/ 📁 skills/
+  - **Antigravity 备份** - 📄 antigravity/mcp_config.json 📁 antigravity/skills/ 📁 antigravity/workflows/ 📁 antigravity/global_workflows/
 
 ## 📦 安装使用
 

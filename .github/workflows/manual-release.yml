@@ -108,12 +108,12 @@ jobs:
 
             ### 📦 安装方式
             ```bash
-            npm install -g @cjh0/cc-cli
+            npm install -g @journey1018/ccm
             ```
 
             ### 🔄 更新方式
             ```bash
-            npm update -g @cjh0/cc-cli
+            npm update -g @journey1018/ccm
             ```
 
             ### 📋 更新内容
@@ -127,5 +127,5 @@ jobs:
           echo "- **版本类型**: ${{ github.event.inputs.version_type }}" >> $GITHUB_STEP_SUMMARY
           echo "- **新版本**: ${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **发布说明**: ${{ github.event.inputs.release_notes }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **npm 包**: https://www.npmjs.com/package/@cjh0/cc-cli/v/${{ steps.version.outputs.version_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **npm 包**: https://www.npmjs.com/package/@journey1018/ccm/v/${{ steps.version.outputs.version_number }}" >> $GITHUB_STEP_SUMMARY
           echo "- **GitHub Release**: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY

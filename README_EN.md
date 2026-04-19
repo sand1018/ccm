@@ -27,10 +27,12 @@ A command-line tool for one-click switching of Claude Code API configurations. S
 - ⚙️ **Full Support** - Supports all Claude Code configuration items
 - 💻 **Codex Support** - Manage Claude Code Codex configurations (Claude models only), support enabling/disabling YOLO mode
 - 🚀 **YOLO Mode** - Provides the most permissive configuration mode for Claude Code API and Codex, unconditionally approves all tool usage requests
-- ☁️ **WebDAV Backup** - Support cloud backup and restore of configuration files (Nutstore, other standard WebDAV, etc.)
-  - **CCM Configuration Backup** - 📁.cc-cli 下 api_config.json etc.
-  - **Claude Code Configuration Backup** - 📄 settings.json 📄 CLAUDE.md 📁 agents/ 📁 commands/
-  - **Codex Backup** - 📄 config.toml 📄 auth.json 📄 AGENTS.md
+- ☁️ **WebDAV Backup** - Support global configuration backup and restore with cross-platform migration between Windows / macOS / Linux (Nutstore and other standard WebDAV services)
+  - **CCM Configuration Backup** - 📁 `.ccm/` with `api_configs.json` and related global files
+  - **Claude Code Configuration Backup** - 📄 settings.json 📄 config.json 📄 CLAUDE.md 📁 agents/ 📁 commands/ 📁 skills/
+  - **Codex Backup** - 📄 config.toml 📄 auth.json 📄 AGENTS.md 📄 AGENTS.override.md 📁 prompts/ 📁 skills/ 📁 ~/.agents/skills/
+  - **Gemini CLI Backup** - 📄 settings.json 📄 .env 📄 GEMINI.md 📁 commands/ 📁 agents/ 📁 skills/
+  - **Antigravity Backup** - 📄 antigravity/mcp_config.json 📁 antigravity/skills/ 📁 antigravity/workflows/ 📁 antigravity/global_workflows/
 
 ## 📦 Installation
 

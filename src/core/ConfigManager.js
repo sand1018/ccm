@@ -11,11 +11,11 @@ class ConfigManager {
   constructor() {
     this.homeDir = os.homedir();
     this.claudeDir = path.join(this.homeDir, ".claude");
-    this.ccCliDir = path.join(this.homeDir, ".cc-cli");
+    this.ccmDir = path.join(this.homeDir, ".ccm");
     this.settingsPath = path.join(this.claudeDir, "settings.json");
     this.claudeConfigPath = path.join(this.claudeDir, "config.json");
 
-    // 查找配置文件路径，优先使用 .cc-cli，兼容 .claude
+    // 查找配置文件路径，优先使用 .ccm，兼容 .claude
     this.configPath = this.findConfigPath();
   }
 
@@ -25,7 +25,7 @@ class ConfigManager {
    */
   findConfigPath() {
     const possiblePaths = [
-      path.join(this.ccCliDir, "api_configs.json"), // 首选：.cc-cli目录
+      path.join(this.ccmDir, "api_configs.json"), // 首选：.ccm目录
       path.join(this.claudeDir, "api_configs.json"), // 兼容：.claude目录
     ];
 
@@ -35,8 +35,8 @@ class ConfigManager {
       }
     }
 
-    // 如果都不存在，返回默认路径（.cc-cli目录）
-    return path.join(this.ccCliDir, "api_configs.json");
+    // 如果都不存在，返回默认路径（.ccm目录）
+    return path.join(this.ccmDir, "api_configs.json");
   }
 
   /**
@@ -45,7 +45,7 @@ class ConfigManager {
   async ensureConfigDir() {
     try {
       await fs.ensureDir(this.claudeDir);
-      await fs.ensureDir(this.ccCliDir);
+      await fs.ensureDir(this.ccmDir);
     } catch (error) {
       throw new Error(`创建配置目录失败: ${error.message}`);
     }
@@ -60,7 +60,7 @@ class ConfigManager {
       await this.ensureConfigDir();
 
       if (!(await fs.pathExists(this.configPath))) {
-        throw new Error("API配置文件不存在，请检查 ~/.claude/api_configs.json");
+        throw new Error("API配置文件不存在，请检查 ~/.ccm/api_configs.json");
       }
 
       const configContent = await fs.readFile(this.configPath, "utf8");

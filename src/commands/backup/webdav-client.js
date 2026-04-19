@@ -10,7 +10,7 @@ import inquirer from 'inquirer';
  */
 class WebDAVClient {
   constructor() {
-    this.configPath = path.join(os.homedir(), '.cc-cli', 'webdav-config.json');
+    this.configPath = path.join(os.homedir(), '.ccm', 'webdav-config.json');
     this.client = null;
     this.config = null;
   }
@@ -361,7 +361,7 @@ class WebDAVClient {
    * @returns {string} 类别
    */
   extractCategory(fileName) {
-    if (fileName.includes('cc-cli')) return 'CC-CLI配置';
+    if (fileName.includes('ccm')) return 'CCM配置';
     if (fileName.includes('claude-code')) return 'Claude Code配置';
     if (fileName.includes('codex')) return 'Codex配置';
     return '未知';

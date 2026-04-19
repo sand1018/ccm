@@ -2,12 +2,12 @@
   "version": 1,
   "categories": {
     "ccCli": {
-      "name": "CC-CLI配置",
+      "name": "CCM配置",
       "entries": [
         {
           "type": "directory",
-          "key": ".cc-cli",
-          "path": "~/.cc-cli",
+          "key": ".ccm",
+          "path": "~/.ccm",
           "required": true
         }
       ]
@@ -109,6 +109,81 @@
           "key": "shared.agentSkills",
           "label": ".agents/skills",
           "path": "~/.agents/skills",
+          "required": false
+        }
+      ]
+    },
+    "geminiCli": {
+      "name": "Gemini CLI配置",
+      "entries": [
+        {
+          "type": "file",
+          "key": "gemini.settings",
+          "label": "settings.json",
+          "path": "~/.gemini/settings.json",
+          "required": false
+        },
+        {
+          "type": "file",
+          "key": "gemini.env",
+          "label": ".env",
+          "path": "~/.gemini/.env",
+          "required": false
+        },
+        {
+          "type": "file",
+          "key": "gemini.globalInstructions",
+          "label": "GEMINI.md",
+          "path": "~/.gemini/GEMINI.md",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "gemini.commands",
+          "label": "commands",
+          "path": "~/.gemini/commands",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "gemini.agents",
+          "label": "agents",
+          "path": "~/.gemini/agents",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "gemini.skills",
+          "label": "skills",
+          "path": "~/.gemini/skills",
+          "required": false
+        },
+        {
+          "type": "file",
+          "key": "gemini.antigravityConfig",
+          "label": "antigravity/mcp_config.json",
+          "path": "~/.gemini/antigravity/mcp_config.json",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "gemini.antigravitySkills",
+          "label": "antigravity/skills",
+          "path": "~/.gemini/antigravity/skills",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "gemini.antigravityWorkflows",
+          "label": "antigravity/workflows",
+          "path": "~/.gemini/antigravity/workflows",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "gemini.antigravityGlobalWorkflows",
+          "label": "antigravity/global_workflows",
+          "path": "~/.gemini/antigravity/global_workflows",
           "required": false
         }
       ]

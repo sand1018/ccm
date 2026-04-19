@@ -296,7 +296,7 @@ class RestoreManager {
   async createPreRestoreSnapshot(backupData, selectedCategories, format) {
     const snapshotRoot = path.join(
       os.homedir(),
-      ".cc-cli",
+      ".ccm",
       "restore-snapshots",
       new Date().toISOString().replace(/[:.]/g, "-")
     );

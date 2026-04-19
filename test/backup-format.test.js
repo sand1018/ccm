@@ -8,7 +8,7 @@ import BackupManager from "../src/commands/backup/backup.js";
 
 test("BackupManager 以二进制安全的 base64 格式采集文件", async () => {
   const manager = new BackupManager();
-  const tempFile = path.join(os.tmpdir(), "cc-cli-binary-test.bin");
+  const tempFile = path.join(os.tmpdir(), "ccm-binary-test.bin");
 
   await fs.writeFile(tempFile, Buffer.from([0, 255, 10, 20]));
 
@@ -30,7 +30,7 @@ test("BackupManager 以二进制安全的 base64 格式采集文件", async () =
 
 test("BackupManager 会解析 CLAUDE.md 中的 @ 导入文件", async () => {
   const manager = new BackupManager();
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "cc-cli-claude-import-"));
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-claude-import-"));
   const importedFile = path.join(tempDir, "rules.md");
   const claudeFile = path.join(tempDir, "CLAUDE.md");
 
@@ -46,9 +46,35 @@ test("BackupManager 会解析 CLAUDE.md 中的 @ 导入文件", async () => {
   }
 });
 
+test("BackupManager 会在 Gemini 类别中收集 GEMINI.md 的 @ 导入文件", async () => {
+  const manager = new BackupManager();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-gemini-import-"));
+  const importedFile = path.join(tempDir, "persona.md");
+  const geminiFile = path.join(tempDir, "GEMINI.md");
+
+  await fs.writeFile(importedFile, "# persona");
+  await fs.writeFile(geminiFile, `请遵循 @${path.basename(importedFile)}`);
+
+  try {
+    const entries = await manager.collectReferencedEntries("geminiCli", {
+      key: "gemini.globalInstructions",
+      type: "file",
+      path: geminiFile,
+      required: false,
+    });
+
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].path, importedFile);
+    assert.equal(entries[0].key, "gemini.globalInstructions.import");
+    assert.equal(entries[0].relativePath, path.basename(importedFile));
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("BackupManager 会解析 Codex config.toml 中的外链文件", async () => {
   const manager = new BackupManager();
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "cc-cli-codex-ref-"));
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-codex-ref-"));
   const instructionsFile = path.join(tempDir, "instructions.md");
   const skillFile = path.join(tempDir, "skill.toml");
   const configFile = path.join(tempDir, "config.toml");
@@ -72,4 +98,12 @@ test("BackupManager 会解析 Codex config.toml 中的外链文件", async () =>
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
+});
+
+test("BackupManager 生成的备份文件名使用 ccm 前缀", () => {
+  const manager = new BackupManager();
+
+  const fileName = manager.generateBackupFileName(["codex"]);
+
+  assert.match(fileName, /^ccm-codex-\d{8}-\d{6}\.json$/);
 });

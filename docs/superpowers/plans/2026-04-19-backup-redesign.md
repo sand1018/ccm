@@ -166,7 +166,7 @@ import BackupManager from "../src/commands/backup/backup.js";
 
 test("collect backup data stores file content as binary-safe base64 entries", async () => {
   const manager = new BackupManager();
-  const tempFile = path.join(os.tmpdir(), "cc-cli-binary-test.bin");
+  const tempFile = path.join(os.tmpdir(), "ccm-binary-test.bin");
   await fs.writeFile(tempFile, Buffer.from([0, 255, 10, 20]));
 
   const categoryData = await manager.collectFileEntry({

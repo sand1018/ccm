@@ -80,9 +80,9 @@ class BackupManager {
   async selectBackupCategories() {
     const categories = [
       {
-        name: "🔧 CC-CLI配置 (.cc-cli/)",
+        name: "🔧 CCM配置 (.ccm/)",
         value: "ccCli",
-        short: "CC-CLI配置",
+        short: "CCM配置",
         checked: true,
       },
       {
@@ -94,6 +94,11 @@ class BackupManager {
         name: "⚙️ Codex配置 (config.toml, auth.json, AGENTS, prompts/, skills/, ~/.agents/skills/)",
         value: "codex",
         short: "Codex配置",
+      },
+      {
+        name: "🪐 Gemini CLI配置 (settings.json, .env, GEMINI.md, commands/, agents/, skills/, antigravity/)",
+        value: "geminiCli",
+        short: "Gemini CLI配置",
       },
     ];
 
@@ -358,6 +363,10 @@ class BackupManager {
       return this.extractClaudeImportedFiles(entry.path);
     }
 
+    if (category === "geminiCli" && entry.key === "gemini.globalInstructions") {
+      return this.extractGeminiImportedFiles(entry.path);
+    }
+
     if (category === "codex" && entry.key === "codex.config") {
       return this.extractCodexReferencedFiles(entry.path);
     }
@@ -371,6 +380,34 @@ class BackupManager {
    * @returns {Array<Object>} 引用条目
    */
   async extractClaudeImportedFiles(filePath) {
+    return this.extractMarkdownImportedFiles(
+      filePath,
+      "claude.globalInstructions.import",
+      "CLAUDE import"
+    );
+  }
+
+  /**
+   * 从 GEMINI.md 中提取 @ 导入文件
+   * @param {string} filePath GEMINI.md 路径
+   * @returns {Array<Object>} 引用条目
+   */
+  async extractGeminiImportedFiles(filePath) {
+    return this.extractMarkdownImportedFiles(
+      filePath,
+      "gemini.globalInstructions.import",
+      "GEMINI import"
+    );
+  }
+
+  /**
+   * 从 Markdown 指令文件中提取 @ 导入文件
+   * @param {string} filePath Markdown 文件路径
+   * @param {string} key 条目标识
+   * @param {string} labelPrefix 标签前缀
+   * @returns {Array<Object>} 引用条目
+   */
+  async extractMarkdownImportedFiles(filePath, key, labelPrefix) {
     if (!(await fs.pathExists(filePath))) {
       return [];
     }
@@ -392,8 +429,8 @@ class BackupManager {
 
       importPaths.push({
         type: "file",
-        key: "claude.globalInstructions.import",
-        label: `CLAUDE import: ${path.basename(resolvedPath)}`,
+        key,
+        label: `${labelPrefix}: ${path.basename(resolvedPath)}`,
         path: resolvedPath,
         required: false,
         relativePath: this.buildRelativePath(path.dirname(filePath), resolvedPath),
@@ -594,7 +631,7 @@ class BackupManager {
         ? selectedCategories[0].toLowerCase().replace(/\s+/g, "-")
         : "multi-config";
 
-    return `cc-cli-${categoryPrefix}-${timestamp}.json`;
+    return `ccm-${categoryPrefix}-${timestamp}.json`;
   }
 
   /**
@@ -741,7 +778,7 @@ class BackupManager {
     console.log("");
     console.log(chalk.white("检测到您使用的是旧版本的配置文件位置："));
     console.log(chalk.gray("• 旧位置: ~/.claude/api_configs.json"));
-    console.log(chalk.gray("• 新位置: ~/.cc-cli/api_configs.json"));
+    console.log(chalk.gray("• 新位置: ~/.ccm/api_configs.json"));
     console.log("");
     console.log(chalk.yellow("为了更好的管理和组织，建议将配置文件迁移到新位置。"));
     console.log("");
@@ -791,7 +828,7 @@ class BackupManager {
    * @returns {boolean} 是否继续备份流程
    */
   async performMigration(oldConfigPath) {
-    const newConfigDir = path.join(os.homedir(), ".cc-cli");
+    const newConfigDir = path.join(os.homedir(), ".ccm");
     const newConfigPath = path.join(newConfigDir, "api_configs.json");
 
     const spinner = ora("正在迁移配置文件").start();

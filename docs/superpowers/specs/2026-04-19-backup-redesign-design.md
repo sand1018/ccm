@@ -23,7 +23,7 @@
 本次重构目标如下：
 
 1. 将备份范围从硬编码路径迁移为声明式备份清单。
-2. 保证所有关键 Claude、Codex、CC-CLI 配置均可被纳入默认备份范围。
+2. 保证所有关键 Claude、Codex、CCM 配置均可被纳入默认备份范围。
 3. 使用二进制安全的文件采集格式，兼容文本与非文本文件。
 4. 在恢复前自动生成本地快照，降低覆盖恢复的风险。
 5. 兼容历史备份格式，避免已有 WebDAV 备份失效。
@@ -101,9 +101,9 @@
   "version": 1,
   "categories": {
     "ccCli": {
-      "name": "CC-CLI配置",
+      "name": "CCM配置",
       "entries": [
-        { "type": "directory", "key": ".cc-cli", "path": "~/.cc-cli", "required": true }
+        { "type": "directory", "key": ".ccm", "path": "~/.ccm", "required": true }
       ]
     },
     "claudeCode": {
@@ -221,7 +221,7 @@
 
 快照路径：
 
-- `~/.cc-cli/restore-snapshots/<timestamp>/`
+- `~/.ccm/restore-snapshots/<timestamp>/`
 
 快照策略：
 

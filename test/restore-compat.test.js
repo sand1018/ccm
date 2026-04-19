@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
@@ -55,4 +56,49 @@ test("RestoreManager 能通过逻辑 key 和 relativePath 恢复目录文件", (
     targetPath,
     path.join(os.homedir(), ".codex", "prompts", "team", "welcome.md")
   );
+});
+
+test("RestoreManager 的恢复前快照写入 ~/.ccm/restore-snapshots", async () => {
+  const manager = new RestoreManager();
+  const sourceDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-restore-source-"));
+  const sourceFile = path.join(sourceDir, "config.toml");
+  await fs.writeFile(sourceFile, 'model = "gpt-5"\n');
+
+  manager.fileManager.getCategoryPaths = () => ({
+    name: "Codex配置",
+    entries: [
+      {
+        type: "file",
+        key: "codex.config",
+        path: sourceFile,
+      },
+    ],
+  });
+
+  const backupData = {
+    categories: {
+      codex: {
+        entries: [
+          {
+            entryType: "file",
+            key: "codex.config",
+            relativePath: "config.toml",
+          },
+        ],
+      },
+    },
+  };
+
+  let snapshotRoot;
+  try {
+    snapshotRoot = await manager.createPreRestoreSnapshot(backupData, ["codex"], "v3");
+    assert.ok(
+      snapshotRoot.startsWith(path.join(os.homedir(), ".ccm", "restore-snapshots"))
+    );
+  } finally {
+    await fs.rm(sourceDir, { recursive: true, force: true });
+    if (snapshotRoot) {
+      await fs.rm(snapshotRoot, { recursive: true, force: true });
+    }
+  }
 });

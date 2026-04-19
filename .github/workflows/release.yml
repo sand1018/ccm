@@ -49,12 +49,12 @@ jobs:
 
             ### 📦 安装方式
             ```bash
-            npm install -g @cjh0/cc-cli
+            npm install -g @journey1018/ccm
             ```
 
             ### 🔄 更新方式
             ```bash
-            npm update -g @cjh0/cc-cli
+            npm update -g @journey1018/ccm
             ```
 
             ### 📋 更新内容
