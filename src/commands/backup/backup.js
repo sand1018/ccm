@@ -355,6 +355,10 @@ class BackupManager {
     const items = await fs.readdir(currentPath, { withFileTypes: true });
 
     for (const item of items) {
+      if (this.shouldSkipDirectoryItem(item.name)) {
+        continue;
+      }
+
       const itemPath = path.join(currentPath, item.name);
 
       if (item.isDirectory()) {
@@ -386,6 +390,15 @@ class BackupManager {
     }
 
     return results;
+  }
+
+  /**
+   * 判断目录采集时是否应跳过当前项
+   * @param {string} itemName 目录项名称
+   * @returns {boolean} 是否跳过
+   */
+  shouldSkipDirectoryItem(itemName) {
+    return itemName === ".git" || itemName === "node_modules";
   }
 
   /**

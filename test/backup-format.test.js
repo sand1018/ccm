@@ -190,3 +190,38 @@ test("BackupManager 收集目录文件时统一使用 POSIX relativePath", async
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 });
+
+test("BackupManager 收集目录时会跳过 .git 和 node_modules", async () => {
+  const manager = new BackupManager();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-dir-ignore-"));
+  const keptFile = path.join(tempDir, "settings.json");
+  const gitFile = path.join(tempDir, ".git", "objects", "keep");
+  const dependencyFile = path.join(
+    tempDir,
+    "node_modules",
+    "demo",
+    "index.js"
+  );
+
+  await fs.writeFile(keptFile, "{}");
+  await fs.mkdir(path.dirname(gitFile), { recursive: true });
+  await fs.writeFile(gitFile, "git-object");
+  await fs.mkdir(path.dirname(dependencyFile), { recursive: true });
+  await fs.writeFile(dependencyFile, "module.exports = {};");
+
+  try {
+    const entries = await manager.collectDirectoryEntry({
+      key: "codex.prompts",
+      type: "directory",
+      path: tempDir,
+      required: false,
+    });
+
+    const fileEntries = entries.filter((entry) => entry.entryType === "file");
+    const relativePaths = fileEntries.map((entry) => entry.relativePath);
+
+    assert.deepEqual(relativePaths, ["settings.json"]);
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});

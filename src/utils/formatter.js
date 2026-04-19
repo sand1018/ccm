@@ -155,8 +155,11 @@ function formatConfigList(allConfigs, currentConfig) {
     output += "\n";
 
     // ANTHROPIC_AUTH_TOKEN - 兼容老格式
-    const authTokens = claudeConfig?.env?.ANTHROPIC_AUTH_TOKEN || siteConfig.ANTHROPIC_AUTH_TOKEN;
-    const tokens = Object.entries(authTokens);
+    const authTokens =
+      claudeConfig?.env?.ANTHROPIC_AUTH_TOKEN || siteConfig.ANTHROPIC_AUTH_TOKEN;
+    const normalizedTokens =
+      typeof authTokens === "string" ? { 默认Token: authTokens } : authTokens || {};
+    const tokens = Object.entries(normalizedTokens);
     output += `└─ 🔑 ANTHROPIC_AUTH_TOKEN (${tokens.length}个):\n`;
 
     tokens.forEach(([tokenName, tokenValue], index) => {
