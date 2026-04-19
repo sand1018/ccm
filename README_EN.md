@@ -10,7 +10,7 @@ A command-line tool for one-click switching of Claude Code, Codex, and Gemini co
 
 ## 📸 Interface Preview
 
-![Configuration Switching Interface](https://qm-cloud.oss-cn-chengdu.aliyuncs.com/test/otherType/PixPin_2025-09-30_08-42-40.png)
+![Configuration Switching Interface](https://raw.githubusercontent.com/sand1018/ccm/main/assets/readme-preview-2026-04-19.png)
 
 ## 📑 Table of Contents
 
