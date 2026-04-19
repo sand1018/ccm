@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "categories": {
+    "ccCli": {
+      "name": "CC-CLI配置",
+      "entries": [
+        {
+          "type": "directory",
+          "key": ".cc-cli",
+          "path": "~/.cc-cli",
+          "required": true
+        }
+      ]
+    },
+    "claudeCode": {
+      "name": "Claude Code配置",
+      "entries": [
+        {
+          "type": "file",
+          "key": "claude.settings",
+          "label": "settings.json",
+          "path": "~/.claude/settings.json",
+          "required": false
+        },
+        {
+          "type": "file",
+          "key": "claude.config",
+          "label": "config.json",
+          "path": "~/.claude/config.json",
+          "required": false
+        },
+        {
+          "type": "file",
+          "key": "claude.globalInstructions",
+          "label": "CLAUDE.md",
+          "path": "~/.claude/CLAUDE.md",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "claude.agents",
+          "label": "agents",
+          "path": "~/.claude/agents",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "claude.commands",
+          "label": "commands",
+          "path": "~/.claude/commands",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "claude.skills",
+          "label": "skills",
+          "path": "~/.claude/skills",
+          "required": false
+        }
+      ]
+    },
+    "codex": {
+      "name": "Codex配置",
+      "entries": [
+        {
+          "type": "file",
+          "key": "codex.config",
+          "label": "config.toml",
+          "path": "~/.codex/config.toml",
+          "required": false
+        },
+        {
+          "type": "file",
+          "key": "codex.auth",
+          "label": "auth.json",
+          "path": "~/.codex/auth.json",
+          "required": false
+        },
+        {
+          "type": "file",
+          "key": "codex.agents",
+          "label": "AGENTS.md",
+          "path": "~/.codex/AGENTS.md",
+          "required": false
+        },
+        {
+          "type": "file",
+          "key": "codex.agentsOverride",
+          "label": "AGENTS.override.md",
+          "path": "~/.codex/AGENTS.override.md",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "codex.skills",
+          "label": "skills",
+          "path": "~/.codex/skills",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "codex.prompts",
+          "label": "prompts",
+          "path": "~/.codex/prompts",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "shared.agentSkills",
+          "label": ".agents/skills",
+          "path": "~/.agents/skills",
+          "required": false
+        }
+      ]
+    }
+  }
+}

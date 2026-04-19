@@ -1,0 +1,72 @@
+{
+  "name": "@journey1018/ccm",
+  "version": "0.0.1",
+  "description": "CCM - Claude Code配置管理CLI工具",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "ccm": "./bin/cc.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node test/run-tests.js",
+    "link": "npm link",
+    "unlink": "npm unlink",
+    "start": "node bin/cc.js",
+    "git:push": "git add -A && git-pro commit && git pull --rebase && git push",
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run",
+    "version:patch": "npm version patch && git push --tags",
+    "version:minor": "npm version minor && git push --tags",
+    "version:major": "npm version major && git push --tags",
+    "prepublishOnly": "npm test"
+  },
+  "keywords": [
+    "cli",
+    "claude-code",
+    "api",
+    "config",
+    "management",
+    "anthropic",
+    "ai",
+    "configuration",
+    "tool"
+  ],
+  "author": "cjh0 <your-email@example.com>",
+  "license": "MIT",
+  "dependencies": {
+    "boxen": "^5.1.2",
+    "chalk": "^4.1.2",
+    "commander": "^9.0.0",
+    "figlet": "^1.5.2",
+    "fs-extra": "^11.1.0",
+    "inquirer": "^8.2.0",
+    "node-notifier": "^10.0.1",
+    "ora": "^5.4.1",
+    "update-notifier": "^7.3.1",
+    "webdav": "^5.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/sand1018/ccm.git"
+  },
+  "homepage": "https://github.com/sand1018/ccm#readme",
+  "bugs": {
+    "url": "https://github.com/sand1018/ccm/issues"
+  },
+  "preferGlobal": true,
+  "devDependencies": {
+    "@cjh0/git-pro": "^8.2.3",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.6",
+    "@semantic-release/npm": "^12.0.1",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
+    "semantic-release": "^24.1.0"
+  }
+}
