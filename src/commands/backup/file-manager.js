@@ -32,20 +32,44 @@ class FileManager {
    * @param {string} rawPath 原始路径
    * @returns {string} 解析后的绝对路径
    */
-  resolveManifestPath(rawPath) {
+  resolveManifestPath(rawPath, pathModule = path) {
     if (!rawPath) {
       return rawPath;
     }
 
     if (rawPath === "~") {
-      return this.homeDir;
+      return this.normalizeHomeDir(this.homeDir, pathModule);
     }
 
     if (rawPath.startsWith("~/")) {
-      return path.join(this.homeDir, rawPath.slice(2));
+      return pathModule.join(
+        this.normalizeHomeDir(this.homeDir, pathModule),
+        ...rawPath
+          .slice(2)
+          .split(/[\\/]+/)
+          .filter(Boolean)
+      );
     }
 
     return rawPath;
+  }
+
+  /**
+   * 按目标路径模块规范化 home 路径
+   * @param {string} homeDir home 目录
+   * @param {typeof path|typeof path.posix|typeof path.win32} pathModule 路径模块
+   * @returns {string} 规范化后的 home 路径
+   */
+  normalizeHomeDir(homeDir, pathModule = path) {
+    if (pathModule === path.posix) {
+      return String(homeDir).replace(/\\/g, "/");
+    }
+
+    if (pathModule === path.win32) {
+      return String(homeDir).replace(/\//g, "\\");
+    }
+
+    return homeDir;
   }
 
   /**

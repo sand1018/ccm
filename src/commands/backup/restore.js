@@ -367,7 +367,11 @@ class RestoreManager {
 
         const stat = await fs.stat(targetPath);
         if (stat.isDirectory()) {
-          await fs.copy(targetPath, snapshotPath);
+          if (this.isSameOrSubPath(snapshotRoot, targetPath)) {
+            await this.copyDirectorySnapshot(targetPath, snapshotPath, snapshotRoot);
+          } else {
+            await fs.copy(targetPath, snapshotPath);
+          }
         } else {
           await fs.copyFile(targetPath, snapshotPath);
         }
@@ -384,6 +388,34 @@ class RestoreManager {
     });
 
     return snapshotRoot;
+  }
+
+  /**
+   * 复制目录快照，并跳过包含当前快照根目录的分支，避免复制到自己的子目录
+   * @param {string} sourcePath 源目录
+   * @param {string} snapshotPath 快照目录
+   * @param {string} snapshotRoot 当前快照根目录
+   */
+  async copyDirectorySnapshot(sourcePath, snapshotPath, snapshotRoot) {
+    await fs.ensureDir(snapshotPath);
+
+    const items = await fs.readdir(sourcePath, { withFileTypes: true });
+    for (const item of items) {
+      const itemPath = path.join(sourcePath, item.name);
+      if (this.isSameOrSubPath(snapshotRoot, itemPath)) {
+        continue;
+      }
+
+      const targetItemPath = path.join(snapshotPath, item.name);
+      if (item.isDirectory()) {
+        await fs.copy(itemPath, targetItemPath);
+        continue;
+      }
+
+      if (item.isFile()) {
+        await fs.copyFile(itemPath, targetItemPath);
+      }
+    }
   }
 
   /**
@@ -457,6 +489,20 @@ class RestoreManager {
     const parsed = path.parse(targetPath);
     const relativePath = targetPath.slice(parsed.root.length);
     return path.join(category, relativePath);
+  }
+
+  /**
+   * 判断 targetPath 是否与 basePath 相同，或位于其子路径内
+   * @param {string} targetPath 目标路径
+   * @param {string} basePath 基准路径
+   * @returns {boolean} 是否同路径或子路径
+   */
+  isSameOrSubPath(targetPath, basePath) {
+    const relativePath = path.relative(basePath, targetPath);
+    return (
+      relativePath === "" ||
+      (!relativePath.startsWith("..") && !path.isAbsolute(relativePath))
+    );
   }
 
   /**
@@ -576,7 +622,7 @@ class RestoreManager {
    * @param {Object} entry 备份条目
    * @returns {string|null} 目标路径
    */
-  resolveEntryTargetPath(currentPaths, entry) {
+  resolveEntryTargetPath(currentPaths, entry, pathModule = path) {
     const matchingEntry = (currentPaths?.entries || []).find(
       (currentEntry) => currentEntry.key === entry.key
     );
@@ -589,20 +635,20 @@ class RestoreManager {
       if (entry.relativePath === "." || !entry.relativePath) {
         return matchingEntry.path;
       }
-      return path.join(
+      return pathModule.join(
         matchingEntry.path,
         ...this.splitPortablePathSegments(entry.relativePath)
       );
     }
 
     if (entry.portablePath) {
-      return this.resolvePortablePath(entry.portablePath);
+      return this.resolvePortablePath(entry.portablePath, pathModule);
     }
 
     if (entry.portableRootPath) {
-      const rootPath = this.resolvePortablePath(entry.portableRootPath);
+      const rootPath = this.resolvePortablePath(entry.portableRootPath, pathModule);
       return entry.relativePath && entry.relativePath !== "."
-        ? path.join(rootPath, entry.relativePath)
+        ? pathModule.join(rootPath, ...this.splitPortablePathSegments(entry.relativePath))
         : rootPath;
     }
 
@@ -614,28 +660,48 @@ class RestoreManager {
    * @param {string} portablePath 可移植路径
    * @returns {string} 目标路径
    */
-  resolvePortablePath(portablePath) {
+  resolvePortablePath(portablePath, pathModule = path) {
     const normalized = portablePath.replace(/\\/g, "/");
+    const homeDir = this.normalizeHomeDirForPathModule(pathModule);
 
     if (normalized === "~") {
-      return os.homedir();
+      return homeDir;
     }
 
     if (normalized.startsWith("~/")) {
-      return path.join(os.homedir(), ...this.splitPortablePathSegments(normalized.slice(2)));
+      return pathModule.join(homeDir, ...this.splitPortablePathSegments(normalized.slice(2)));
     }
 
     const windowsHomeMatch = normalized.match(/^[A-Za-z]:\/Users\/[^/]+\/(.+)$/);
     if (windowsHomeMatch) {
-      return path.join(os.homedir(), ...this.splitPortablePathSegments(windowsHomeMatch[1]));
+      return pathModule.join(homeDir, ...this.splitPortablePathSegments(windowsHomeMatch[1]));
     }
 
     const posixHomeMatch = normalized.match(/^\/(?:Users|home)\/[^/]+\/(.+)$/);
     if (posixHomeMatch) {
-      return path.join(os.homedir(), ...this.splitPortablePathSegments(posixHomeMatch[1]));
+      return pathModule.join(homeDir, ...this.splitPortablePathSegments(posixHomeMatch[1]));
     }
 
     return normalized;
+  }
+
+  /**
+   * 按目标路径模块规范化当前 home 目录
+   * @param {typeof path|typeof path.posix|typeof path.win32} pathModule 路径模块
+   * @returns {string} 规范化后的 home 目录
+   */
+  normalizeHomeDirForPathModule(pathModule = path) {
+    const homeDir = os.homedir();
+
+    if (pathModule === path.posix) {
+      return homeDir.replace(/\\/g, "/");
+    }
+
+    if (pathModule === path.win32) {
+      return homeDir.replace(/\//g, "\\");
+    }
+
+    return homeDir;
   }
 
   /**

@@ -64,3 +64,25 @@ test("FileManager 返回基于清单解析后的 entries", () => {
     )
   );
 });
+
+test("FileManager 会按当前 home 目录展开逻辑路径", () => {
+  const manager = new FileManager();
+
+  manager.homeDir = path.win32.join("C:\\", "Users", "Alice");
+  assert.equal(
+    manager.resolveManifestPath("~/.codex/config.toml", path.win32),
+    path.win32.join("C:\\", "Users", "Alice", ".codex", "config.toml")
+  );
+
+  manager.homeDir = path.posix.join("/Users", "alice");
+  assert.equal(
+    manager.resolveManifestPath("~/.codex/config.toml", path.posix),
+    path.posix.join("/Users", "alice", ".codex", "config.toml")
+  );
+
+  manager.homeDir = path.posix.join("/home", "alice");
+  assert.equal(
+    manager.resolveManifestPath("~/.codex/config.toml", path.posix),
+    path.posix.join("/home", "alice", ".codex", "config.toml")
+  );
+});

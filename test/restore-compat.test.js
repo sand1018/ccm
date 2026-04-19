@@ -58,6 +58,42 @@ test("RestoreManager 能通过逻辑 key 和 relativePath 恢复目录文件", (
   );
 });
 
+test("RestoreManager 会把 Windows 风格 relativePath 映射到当前平台目录", () => {
+  const manager = new RestoreManager();
+
+  const targetPath = manager.resolveEntryTargetPath(null, {
+    entryType: "file",
+    key: "codex.prompts",
+    portableRootPath: createWindowsPortablePath(".codex", "prompts"),
+    relativePath: "team\\welcome.md",
+  });
+
+  assert.equal(
+    targetPath,
+    path.join(os.homedir(), ".codex", "prompts", "team", "welcome.md")
+  );
+});
+
+test("RestoreManager 在 POSIX 目标平台上也会拆分 Windows 风格 relativePath", () => {
+  const manager = new RestoreManager();
+
+  const targetPath = manager.resolveEntryTargetPath(
+    null,
+    {
+      entryType: "file",
+      key: "codex.prompts",
+      portableRootPath: createWindowsPortablePath(".codex", "prompts"),
+      relativePath: "team\\welcome.md",
+    },
+    path.posix
+  );
+
+  assert.equal(
+    targetPath,
+    path.posix.join(os.homedir().replace(/\\/g, "/"), ".codex", "prompts", "team", "welcome.md")
+  );
+});
+
 test("RestoreManager 的恢复前快照写入 ~/.ccm/restore-snapshots", async () => {
   const manager = new RestoreManager();
   const sourceDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-restore-source-"));
@@ -100,6 +136,57 @@ test("RestoreManager 的恢复前快照写入 ~/.ccm/restore-snapshots", async (
     if (snapshotRoot) {
       await fs.rm(snapshotRoot, { recursive: true, force: true });
     }
+  }
+});
+
+test("RestoreManager 为 ~/.ccm 自身创建恢复前快照时不会复制到自己的子目录", async () => {
+  const manager = new RestoreManager();
+  const originalHomeDir = os.homedir;
+  const tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-home-"));
+  const ccmDir = path.join(tempHome, ".ccm");
+  const configFile = path.join(ccmDir, "api_configs.json");
+
+  os.homedir = () => tempHome;
+
+  await fs.mkdir(ccmDir, { recursive: true });
+  await fs.writeFile(configFile, '{"sites":{}}');
+
+  manager.fileManager.getCategoryPaths = () => ({
+    name: "CCM配置",
+    entries: [
+      {
+        type: "directory",
+        key: "ccCli.configDir",
+        path: ccmDir,
+      },
+    ],
+  });
+
+  const backupData = {
+    categories: {
+      ccCli: {
+        entries: [
+          {
+            entryType: "directory",
+            key: "ccCli.configDir",
+            relativePath: ".",
+          },
+        ],
+      },
+    },
+  };
+
+  let snapshotRoot;
+  try {
+    snapshotRoot = await manager.createPreRestoreSnapshot(backupData, ["ccCli"], "v3");
+    const manifest = JSON.parse(
+      await fs.readFile(path.join(snapshotRoot, "snapshot-manifest.json"), "utf8")
+    );
+
+    assert.equal(manifest.categories.ccCli.length, 1);
+  } finally {
+    os.homedir = originalHomeDir;
+    await fs.rm(tempHome, { recursive: true, force: true });
   }
 });
 
