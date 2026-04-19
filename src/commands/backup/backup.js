@@ -81,7 +81,7 @@ class BackupManager {
     const categories = [
       {
         name: "🔧 CCM配置 (.ccm/)",
-        value: "ccCli",
+        value: "ccm",
         short: "CCM配置",
         checked: true,
       },

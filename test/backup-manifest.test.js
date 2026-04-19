@@ -52,14 +52,14 @@ test("备份清单使用稳定的逻辑 key 作为恢复主键", () => {
   assert.ok(geminiKeys.includes("gemini.antigravityGlobalWorkflows"));
 });
 
-test("备份清单中的 CCM 类别使用新的目录与名称", () => {
+test("备份清单中的 CCM 类别使用 ccm 作为逻辑 key", () => {
   const raw = fs.readFileSync(
     new URL("../src/commands/backup/backup-manifest.json", import.meta.url),
     "utf8"
   );
   const manifest = JSON.parse(raw);
 
-  assert.equal(manifest.categories.ccCli.name, "CCM配置");
-  assert.equal(manifest.categories.ccCli.entries[0].key, ".ccm");
-  assert.equal(manifest.categories.ccCli.entries[0].path, "~/.ccm");
+  assert.equal(manifest.categories.ccm.name, "CCM配置");
+  assert.equal(manifest.categories.ccm.entries[0].key, ".ccm");
+  assert.equal(manifest.categories.ccm.entries[0].path, "~/.ccm");
 });

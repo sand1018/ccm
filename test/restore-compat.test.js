@@ -156,7 +156,7 @@ test("RestoreManager 为 ~/.ccm 自身创建恢复前快照时不会复制到自
     entries: [
       {
         type: "directory",
-        key: "ccCli.configDir",
+        key: "ccm.configDir",
         path: ccmDir,
       },
     ],
@@ -164,11 +164,11 @@ test("RestoreManager 为 ~/.ccm 自身创建恢复前快照时不会复制到自
 
   const backupData = {
     categories: {
-      ccCli: {
+      ccm: {
         entries: [
           {
             entryType: "directory",
-            key: "ccCli.configDir",
+            key: "ccm.configDir",
             relativePath: ".",
           },
         ],
@@ -178,12 +178,12 @@ test("RestoreManager 为 ~/.ccm 自身创建恢复前快照时不会复制到自
 
   let snapshotRoot;
   try {
-    snapshotRoot = await manager.createPreRestoreSnapshot(backupData, ["ccCli"], "v3");
+    snapshotRoot = await manager.createPreRestoreSnapshot(backupData, ["ccm"], "v3");
     const manifest = JSON.parse(
       await fs.readFile(path.join(snapshotRoot, "snapshot-manifest.json"), "utf8")
     );
 
-    assert.equal(manifest.categories.ccCli.length, 1);
+    assert.equal(manifest.categories.ccm.length, 1);
   } finally {
     os.homedir = originalHomeDir;
     await fs.rm(tempHome, { recursive: true, force: true });

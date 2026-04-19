@@ -100,7 +100,7 @@
 {
   "version": 1,
   "categories": {
-    "ccCli": {
+    "ccm": {
       "name": "CCM配置",
       "entries": [
         { "type": "directory", "key": ".ccm", "path": "~/.ccm", "required": true }

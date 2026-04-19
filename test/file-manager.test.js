@@ -7,7 +7,7 @@ import FileManager from "../src/commands/backup/file-manager.js";
 
 test("FileManager 返回基于清单解析后的 entries", () => {
   const manager = new FileManager();
-  const ccm = manager.getCategoryPaths("ccCli");
+  const ccm = manager.getCategoryPaths("ccm");
   const codex = manager.getCategoryPaths("codex");
   const gemini = manager.getCategoryPaths("geminiCli");
 
