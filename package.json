@@ -1,6 +1,6 @@
 {
   "name": "@journey1018/ccm",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "CCM - 多 AI CLI 配置管理工具",
   "main": "src/index.js",
   "type": "module",
