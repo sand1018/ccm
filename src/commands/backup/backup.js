@@ -38,14 +38,16 @@ class BackupManager {
         return;
       }
 
-      const confirmed = await this.confirmBackup(selectedCategories);
+      const backupFileName = await this.selectBackupFileName(selectedCategories);
+
+      const confirmed = await this.confirmBackup(selectedCategories, backupFileName);
       if (!confirmed) {
         console.log(chalk.yellow("ℹ️ 用户取消备份"));
         return;
       }
 
       const backupData = await this.collectBackupData(selectedCategories);
-      await this.uploadToWebDAV(backupData, selectedCategories);
+      await this.uploadToWebDAV(backupData, selectedCategories, backupFileName);
 
       console.log(chalk.green("\n✅ 备份完成！"));
     } catch (error) {
@@ -121,11 +123,110 @@ class BackupManager {
   }
 
   /**
+   * 选择备份文件名
+   * @param {Array} selectedCategories 选择的类别
+   * @returns {string} 备份文件名
+   */
+  async selectBackupFileName(selectedCategories) {
+    const defaultFileName = this.generateBackupFileName(selectedCategories);
+
+    const { fileNameMode } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "fileNameMode",
+        message: "请选择备份文件命名方式：",
+        choices: [
+          {
+            name: `使用默认名称 (${defaultFileName})`,
+            value: "default",
+            short: "默认名称",
+          },
+          {
+            name: "使用自定义名称",
+            value: "custom",
+            short: "自定义名称",
+          },
+        ],
+        default: "default",
+      },
+    ]);
+
+    if (fileNameMode === "default") {
+      return defaultFileName;
+    }
+
+    const { customFileName } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "customFileName",
+        message: "请输入备份文件名（可省略 .json）：",
+        validate: (input) => this.validateBackupFileName(input),
+      },
+    ]);
+
+    return this.normalizeBackupFileName(customFileName);
+  }
+
+  /**
+   * 规范化备份文件名
+   * @param {string} fileName 用户输入的文件名
+   * @returns {string} 规范化后的文件名
+   */
+  normalizeBackupFileName(fileName) {
+    const trimmedFileName = String(fileName || "").trim();
+    if (!trimmedFileName) {
+      return "";
+    }
+
+    const baseName = trimmedFileName.toLowerCase().endsWith(".json")
+      ? trimmedFileName.slice(0, -5)
+      : trimmedFileName;
+
+    return `${baseName}.json`;
+  }
+
+  /**
+   * 校验备份文件名
+   * @param {string} fileName 用户输入的文件名
+   * @returns {true|string} 校验结果
+   */
+  validateBackupFileName(fileName) {
+    const normalizedFileName = this.normalizeBackupFileName(fileName);
+
+    if (!normalizedFileName) {
+      return "备份文件名不能为空";
+    }
+
+    if (normalizedFileName === ".json") {
+      return "备份文件名不能只有扩展名";
+    }
+
+    if (normalizedFileName.includes("/") || normalizedFileName.includes("\\")) {
+      return "备份文件名不能包含路径分隔符";
+    }
+
+    if (
+      normalizedFileName === "." ||
+      normalizedFileName === ".." ||
+      normalizedFileName.includes("..")
+    ) {
+      return "备份文件名不能包含相对路径";
+    }
+
+    if (/[<>:"|?*\x00-\x1F]/u.test(normalizedFileName)) {
+      return "备份文件名包含非法字符";
+    }
+
+    return true;
+  }
+
+  /**
    * 确认备份信息
    * @param {Array} categories 选中的类别
+   * @param {string} fileName 备份文件名
    * @returns {boolean} 是否确认备份
    */
-  async confirmBackup(categories) {
+  async confirmBackup(categories, fileName) {
     console.log(chalk.white("\n📋 备份确认信息："));
 
     for (const category of categories) {
@@ -142,6 +243,7 @@ class BackupManager {
 
     const timestamp = new Date().toLocaleString();
     console.log(chalk.gray(`\n备份时间: ${timestamp}`));
+    console.log(chalk.gray(`备份文件名: ${fileName}`));
     console.log(chalk.gray("备份位置: 本地已收集，等待配置云端存储"));
 
     const { confirmed } = await inquirer.prompt([
@@ -675,18 +777,20 @@ class BackupManager {
    * 上传备份到WebDAV
    * @param {Object} backupData 备份数据
    * @param {Array} selectedCategories 选择的类别
+   * @param {string} [fileName] 备份文件名
    */
-  async uploadToWebDAV(backupData, selectedCategories) {
+  async uploadToWebDAV(backupData, selectedCategories, fileName = null) {
     try {
-      const fileName = this.generateBackupFileName(selectedCategories);
+      const backupFileName =
+        fileName || this.generateBackupFileName(selectedCategories);
 
       console.log(chalk.blue("\n📤 正在上传备份到云端存储..."));
 
       await this.webdavClient.initialize();
       await this.cleanupOldBackups();
 
-      await this.webdavClient.uploadBackup(fileName, backupData);
-      this.showUploadSuccess(fileName, backupData);
+      await this.webdavClient.uploadBackup(backupFileName, backupData);
+      this.showUploadSuccess(backupFileName, backupData);
     } catch (error) {
       console.error(chalk.red("\n❌ 上传备份失败:"), error.message);
       console.log(chalk.yellow("\n💡 备份数据已收集完成，但上传失败。您可以："));

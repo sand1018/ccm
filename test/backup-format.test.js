@@ -166,6 +166,48 @@ test("BackupManager 生成的备份文件名使用 ccm 前缀", () => {
   assert.match(fileName, /^ccm-codex-\d{8}-\d{6}\.json$/);
 });
 
+test("BackupManager 会规范化并校验自定义备份文件名", () => {
+  const manager = new BackupManager();
+
+  assert.equal(
+    manager.normalizeBackupFileName(" team-config "),
+    "team-config.json"
+  );
+  assert.equal(manager.normalizeBackupFileName("archive.JSON"), "archive.json");
+  assert.equal(manager.validateBackupFileName("team-config"), true);
+  assert.equal(
+    manager.validateBackupFileName("../team-config"),
+    "备份文件名不能包含路径分隔符"
+  );
+  assert.equal(manager.validateBackupFileName(""), "备份文件名不能为空");
+});
+
+test("BackupManager 上传时支持指定备份文件名", async () => {
+  const manager = new BackupManager();
+  let uploadedFileName = null;
+  let successFileName = null;
+
+  manager.webdavClient = {
+    initialize: async () => {},
+    listBackups: async () => [],
+    uploadBackup: async (fileName) => {
+      uploadedFileName = fileName;
+    },
+  };
+  manager.showUploadSuccess = (fileName) => {
+    successFileName = fileName;
+  };
+
+  await manager.uploadToWebDAV(
+    { categories: {} },
+    ["codex"],
+    "team-config.json"
+  );
+
+  assert.equal(uploadedFileName, "team-config.json");
+  assert.equal(successFileName, "team-config.json");
+});
+
 test("BackupManager 收集目录文件时统一使用 POSIX relativePath", async () => {
   const manager = new BackupManager();
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-dir-relative-"));
