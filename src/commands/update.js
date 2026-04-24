@@ -130,25 +130,35 @@ class UpdateCommand {
    * @returns {Promise<Object|null>} 更新信息
    */
   async fetchUpdateInfo() {
-    const notifier = updateNotifier({
-      pkg: packageJson,
-      updateCheckInterval: 0,
-      shouldNotifyInNpmScript: false,
-    });
+    const notifier = this.createUpdateNotifier();
 
-    if (!notifier.update) {
+    const update = await notifier.fetchInfo();
+
+    if (!update) {
       return null;
     }
 
-    if (notifier.update.current === notifier.update.latest) {
+    if (update.current === update.latest) {
       return null;
     }
 
     return {
-      current: notifier.update.current,
-      latest: notifier.update.latest,
-      type: notifier.update.type,
+      current: update.current,
+      latest: update.latest,
+      type: update.type,
     };
+  }
+
+  /**
+   * 创建更新检查器
+   * @returns {Object} update-notifier 实例
+   */
+  createUpdateNotifier() {
+    return updateNotifier({
+      pkg: packageJson,
+      updateCheckInterval: 0,
+      shouldNotifyInNpmScript: false,
+    });
   }
 
   /**

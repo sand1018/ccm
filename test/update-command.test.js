@@ -68,6 +68,34 @@ test("UpdateCommand 在发现新版本且确认后会执行 npm 全局升级", a
   }
 });
 
+test("UpdateCommand 会实时拉取更新信息", async () => {
+  const originalCreateUpdateNotifier = updateCommand.createUpdateNotifier;
+  let fetchInfoCalled = false;
+
+  updateCommand.createUpdateNotifier = () => ({
+    fetchInfo: async () => {
+      fetchInfoCalled = true;
+      return {
+        current: "0.0.3",
+        latest: "0.0.4",
+        type: "patch",
+      };
+    },
+  });
+
+  try {
+    const updateInfo = await updateCommand.fetchUpdateInfo();
+    assert.equal(fetchInfoCalled, true);
+    assert.deepEqual(updateInfo, {
+      current: "0.0.3",
+      latest: "0.0.4",
+      type: "patch",
+    });
+  } finally {
+    updateCommand.createUpdateNotifier = originalCreateUpdateNotifier;
+  }
+});
+
 test("UpdateCommand 在 Windows 上通过 cmd.exe 包装 npm 升级命令", () => {
   const invocation = updateCommand.buildUpgradeInvocation(
     "@journey1018/ccm@latest",
