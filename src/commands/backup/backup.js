@@ -832,7 +832,7 @@ class BackupManager {
    */
   async cleanupOldBackups() {
     try {
-      const maxBackups = 5;
+      const maxBackups = 20;
       const backups = await this.webdavClient.listBackups();
 
       if (backups.length >= maxBackups) {

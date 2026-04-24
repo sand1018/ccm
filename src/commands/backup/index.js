@@ -214,7 +214,7 @@ class BackupCommand {
     console.log(chalk.gray('• ✅ 本地备份数据收集'));
     console.log(chalk.gray('• ✅ WebDAV云端备份'));
     console.log(chalk.gray('• ✅ 选择性配置恢复'));
-    console.log(chalk.gray('• ✅ 自动清理旧备份 (保留5个)'));
+    console.log(chalk.gray('• ✅ 自动清理旧备份 (保留20个)'));
   }
 
   /**

@@ -208,6 +208,25 @@ test("BackupManager 上传时支持指定备份文件名", async () => {
   assert.equal(successFileName, "team-config.json");
 });
 
+test("BackupManager 清理旧备份时默认保留最近 20 个", async () => {
+  const manager = new BackupManager();
+  const deletedPaths = [];
+  const backups = Array.from({ length: 20 }, (_, index) => ({
+    path: `/ccm-backups/old-${index + 1}.json`,
+  }));
+
+  manager.webdavClient = {
+    listBackups: async () => backups,
+    deleteBackup: async (backupPath) => {
+      deletedPaths.push(backupPath);
+    },
+  };
+
+  await manager.cleanupOldBackups();
+
+  assert.deepEqual(deletedPaths, ["/ccm-backups/old-20.json"]);
+});
+
 test("BackupManager 收集目录文件时统一使用 POSIX relativePath", async () => {
   const manager = new BackupManager();
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-dir-relative-"));
