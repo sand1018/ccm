@@ -88,17 +88,22 @@ class BackupManager {
         checked: true,
       },
       {
-        name: "🎯 Claude Code配置 (settings.json, config.json, CLAUDE.md, agents/, commands/, skills/)",
+        name: "🎯 Claude Code配置 (settings.json, config.json, CLAUDE.md, agents/, commands/, hooks/, skills/)",
         value: "claudeCode",
         short: "Claude Code配置",
       },
       {
-        name: "⚙️ Codex配置 (config.toml, auth.json, AGENTS, prompts/, skills/, ~/.agents/skills/)",
+        name: "⚙️ Codex配置 (config.toml, auth.json, hooks.json, hooks/, AGENTS, prompts/, skills/, agents/, ~/.agents/skills/, ~/.agent/skills/, ~/.agent/workflows/)",
         value: "codex",
         short: "Codex配置",
       },
       {
-        name: "🪐 Gemini CLI配置 (settings.json, .env, GEMINI.md, commands/, agents/, skills/, antigravity/)",
+        name: "🧭 Cursor配置 (hooks.json, commands/, skills/, agents/, hooks/, rules/)",
+        value: "cursor",
+        short: "Cursor配置",
+      },
+      {
+        name: "🪐 Gemini CLI配置 (settings.json, hooks/, .env, GEMINI.md, commands/, agents/, skills/, antigravity/)",
         value: "geminiCli",
         short: "Gemini CLI配置",
       },

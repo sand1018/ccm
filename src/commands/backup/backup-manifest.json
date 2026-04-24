@@ -59,6 +59,13 @@
         },
         {
           "type": "directory",
+          "key": "claude.hooks",
+          "label": "hooks",
+          "path": "~/.claude/hooks",
+          "required": false
+        },
+        {
+          "type": "directory",
           "key": "claude.skills",
           "label": "skills",
           "path": "~/.claude/skills",
@@ -85,6 +92,20 @@
         },
         {
           "type": "file",
+          "key": "codex.hooksConfig",
+          "label": "hooks.json",
+          "path": "~/.codex/hooks.json",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "codex.hooks",
+          "label": "hooks",
+          "path": "~/.codex/hooks",
+          "required": false
+        },
+        {
+          "type": "file",
           "key": "codex.agents",
           "label": "AGENTS.md",
           "path": "~/.codex/AGENTS.md",
@@ -106,6 +127,13 @@
         },
         {
           "type": "directory",
+          "key": "codex.subAgents",
+          "label": "agents",
+          "path": "~/.codex/agents",
+          "required": false
+        },
+        {
+          "type": "directory",
           "key": "codex.prompts",
           "label": "prompts",
           "path": "~/.codex/prompts",
@@ -116,6 +144,67 @@
           "key": "shared.agentSkills",
           "label": ".agents/skills",
           "path": "~/.agents/skills",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "shared.dotAgentSkills",
+          "label": ".agent/skills",
+          "path": "~/.agent/skills",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "shared.dotAgentWorkflows",
+          "label": ".agent/workflows",
+          "path": "~/.agent/workflows",
+          "required": false
+        }
+      ]
+    },
+    "cursor": {
+      "name": "Cursor配置",
+      "entries": [
+        {
+          "type": "file",
+          "key": "cursor.hooksConfig",
+          "label": "hooks.json",
+          "path": "~/.cursor/hooks.json",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "cursor.commands",
+          "label": "commands",
+          "path": "~/.cursor/commands",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "cursor.skills",
+          "label": "skills",
+          "path": "~/.cursor/skills",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "cursor.agents",
+          "label": "agents",
+          "path": "~/.cursor/agents",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "cursor.hooks",
+          "label": "hooks",
+          "path": "~/.cursor/hooks",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "cursor.rules",
+          "label": "rules",
+          "path": "~/.cursor/rules",
           "required": false
         }
       ]
@@ -128,6 +217,13 @@
           "key": "gemini.settings",
           "label": "settings.json",
           "path": "~/.gemini/settings.json",
+          "required": false
+        },
+        {
+          "type": "directory",
+          "key": "gemini.hooks",
+          "label": "hooks",
+          "path": "~/.gemini/hooks",
           "required": false
         },
         {

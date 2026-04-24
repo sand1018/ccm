@@ -29,9 +29,10 @@ A command-line tool for one-click switching of Claude Code, Codex, and Gemini co
 - 🚀 **YOLO Mode** - Provides the most permissive configuration mode for Claude Code API and Codex, unconditionally approves all tool usage requests
 - ☁️ **WebDAV Backup** - Support global configuration backup and restore with cross-platform migration between Windows / macOS / Linux (Nutstore and other standard WebDAV services)
   - **CCM Configuration Backup** - 📁 `.ccm/` with `api_configs.json` and related global files
-  - **Claude Code Configuration Backup** - 📄 settings.json 📄 config.json 📄 `.claude.json` (root user-level `mcpServers` only; restore merges it back and preserves other fields) 📄 CLAUDE.md 📁 agents/ 📁 commands/ 📁 skills/
-  - **Codex Backup** - 📄 config.toml 📄 auth.json 📄 AGENTS.md 📄 AGENTS.override.md 📁 prompts/ 📁 skills/ 📁 ~/.agents/skills/
-  - **Gemini CLI Backup** - 📄 settings.json 📄 .env 📄 GEMINI.md 📁 commands/ 📁 agents/ 📁 skills/
+  - **Claude Code Configuration Backup** - 📄 settings.json 📄 config.json 📄 `.claude.json` (root user-level `mcpServers` only; restore merges it back and preserves other fields) 📄 CLAUDE.md 📁 agents/ 📁 commands/ 📁 hooks/ 📁 skills/
+  - **Codex Backup** - 📄 config.toml 📄 auth.json 📄 hooks.json 📄 AGENTS.md 📄 AGENTS.override.md 📁 hooks/ 📁 prompts/ 📁 skills/ 📁 agents/ 📁 ~/.agents/skills/ 📁 ~/.agent/skills/ 📁 ~/.agent/workflows/
+  - **Cursor Backup** - 📄 hooks.json 📁 commands/ 📁 skills/ 📁 agents/ 📁 hooks/ 📁 rules/
+  - **Gemini CLI Backup** - 📄 settings.json 📄 .env 📄 GEMINI.md 📁 hooks/ 📁 commands/ 📁 agents/ 📁 skills/
   - **Antigravity Backup** - 📄 antigravity/mcp_config.json 📁 antigravity/skills/ 📁 antigravity/workflows/ 📁 antigravity/global_workflows/
 
 ## 📦 Installation
