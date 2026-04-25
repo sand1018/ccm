@@ -7,6 +7,11 @@ import ora from "ora";
 import FileManager from "./file-manager.js";
 import WebDAVClient from "./webdav-client.js";
 
+const RESTORE_MODES = Object.freeze({
+  MERGE: "merge",
+  MIRROR: "mirror",
+});
+
 /**
  * 恢复功能实现
  */
@@ -46,17 +51,19 @@ class RestoreManager {
         return;
       }
 
+      const restoreMode = await this.selectRestoreMode();
       const confirmed = await this.confirmRestore(
         selectedBackup,
         selectedCategories,
-        backupData
+        backupData,
+        restoreMode
       );
       if (!confirmed) {
         console.log(chalk.yellow("ℹ️ 用户取消恢复操作"));
         return;
       }
 
-      await this.executeRestore(backupData, selectedCategories);
+      await this.executeRestore(backupData, selectedCategories, restoreMode);
       console.log(chalk.green("\n✅ 配置恢复完成！"));
     } catch (error) {
       console.error(chalk.red("\n❌ 恢复失败:"), error.message);
@@ -225,18 +232,60 @@ class RestoreManager {
   }
 
   /**
+   * 选择恢复模式
+   * @returns {"merge"|"mirror"} 恢复模式
+   */
+  async selectRestoreMode() {
+    const { restoreMode } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "restoreMode",
+        message: "请选择恢复模式:",
+        default: RESTORE_MODES.MERGE,
+        choices: [
+          {
+            name: "合并恢复（默认，覆盖同路径文件，保留备份中不存在的目标文件）",
+            value: RESTORE_MODES.MERGE,
+            short: "合并恢复",
+          },
+          {
+            name: "镜像恢复（删除目录目标中备份不存在的额外文件）",
+            value: RESTORE_MODES.MIRROR,
+            short: "镜像恢复",
+          },
+        ],
+      },
+    ]);
+
+    return this.normalizeRestoreMode(restoreMode);
+  }
+
+  /**
    * 确认恢复操作
    * @param {Object} selectedBackup 选择的备份文件
    * @param {Array} selectedCategories 选择的类别
    * @param {Object} backupData 备份数据
+   * @param {"merge"|"mirror"} restoreMode 恢复模式
    * @returns {boolean} 是否确认恢复
    */
-  async confirmRestore(selectedBackup, selectedCategories, backupData) {
+  async confirmRestore(
+    selectedBackup,
+    selectedCategories,
+    backupData,
+    restoreMode = RESTORE_MODES.MERGE
+  ) {
+    const normalizedRestoreMode = this.normalizeRestoreMode(restoreMode);
+
     console.log(chalk.yellow("\n⚠️ 恢复操作将会覆盖现有的配置文件！"));
     console.log(chalk.gray(`备份文件: ${selectedBackup.name}`));
     console.log(chalk.gray(`恢复类别: ${selectedCategories.join(", ")}`));
+    console.log(chalk.gray(`恢复模式: ${this.getRestoreModeLabel(normalizedRestoreMode)}`));
 
-    const restoreNotes = this.buildRestoreNotes(backupData, selectedCategories);
+    const restoreNotes = this.buildRestoreNotes(
+      backupData,
+      selectedCategories,
+      normalizedRestoreMode
+    );
     for (const note of restoreNotes) {
       console.log(chalk.blue(`ℹ️ ${note}`));
     }
@@ -257,10 +306,16 @@ class RestoreManager {
    * 构建恢复确认阶段需要展示的提示
    * @param {Object} backupData 备份数据
    * @param {Array} selectedCategories 选择的类别
+   * @param {"merge"|"mirror"} restoreMode 恢复模式
    * @returns {Array<string>} 提示列表
    */
-  buildRestoreNotes(backupData, selectedCategories) {
+  buildRestoreNotes(backupData, selectedCategories, restoreMode = RESTORE_MODES.MERGE) {
     const notes = [];
+    const normalizedRestoreMode = this.normalizeRestoreMode(restoreMode);
+
+    if (this.isMirrorRestore(normalizedRestoreMode)) {
+      notes.push("镜像恢复会删除目录目标中备份不存在的额外文件；恢复执行前会先创建恢复前快照");
+    }
 
     for (const category of selectedCategories || []) {
       const categoryData = backupData?.categories?.[category];
@@ -279,6 +334,35 @@ class RestoreManager {
   }
 
   /**
+   * 归一化恢复模式
+   * @param {string} restoreMode 恢复模式
+   * @returns {"merge"|"mirror"} 恢复模式
+   */
+  normalizeRestoreMode(restoreMode) {
+    return restoreMode === RESTORE_MODES.MIRROR
+      ? RESTORE_MODES.MIRROR
+      : RESTORE_MODES.MERGE;
+  }
+
+  /**
+   * 判断是否为镜像恢复
+   * @param {string} restoreMode 恢复模式
+   * @returns {boolean} 是否为镜像恢复
+   */
+  isMirrorRestore(restoreMode) {
+    return this.normalizeRestoreMode(restoreMode) === RESTORE_MODES.MIRROR;
+  }
+
+  /**
+   * 获取恢复模式展示名
+   * @param {"merge"|"mirror"} restoreMode 恢复模式
+   * @returns {string} 展示名
+   */
+  getRestoreModeLabel(restoreMode) {
+    return this.isMirrorRestore(restoreMode) ? "镜像恢复" : "合并恢复";
+  }
+
+  /**
    * 判断备份格式版本
    * @param {Object} backupData 备份数据
    * @returns {"v3"|"legacy"} 备份格式
@@ -291,13 +375,15 @@ class RestoreManager {
    * 执行恢复操作
    * @param {Object} backupData 备份数据
    * @param {Array} selectedCategories 选择的类别
+   * @param {"merge"|"mirror"} restoreMode 恢复模式
    */
-  async executeRestore(backupData, selectedCategories) {
+  async executeRestore(backupData, selectedCategories, restoreMode = RESTORE_MODES.MERGE) {
     console.log(chalk.blue("\n🔄 正在执行恢复操作..."));
 
     const spinner = ora("恢复配置文件").start();
     try {
       const format = this.getBackupFormatVersion(backupData);
+      const normalizedRestoreMode = this.normalizeRestoreMode(restoreMode);
       this.lastSnapshotPath = await this.createPreRestoreSnapshot(
         backupData,
         selectedCategories,
@@ -306,15 +392,28 @@ class RestoreManager {
 
       let result;
       if (format === "v3") {
-        result = await this.restoreV3Entries(backupData, selectedCategories, spinner);
+        result = await this.restoreV3Entries(
+          backupData,
+          selectedCategories,
+          spinner,
+          normalizedRestoreMode
+        );
       } else {
         result = await this.restoreLegacyBackup(backupData, selectedCategories, spinner);
       }
 
+      const deletedSummary =
+        result.deletedFiles > 0 ? `, 删除 ${result.deletedFiles} 个额外文件` : "";
       spinner.succeed(
-        `恢复完成: ${result.restoredFiles} 个文件成功, ${result.failedFiles} 个文件失败`
+        `恢复完成: ${result.restoredFiles} 个文件成功, ${result.failedFiles} 个文件失败${deletedSummary}`
       );
-      this.showRestoreResult(result.restoredFiles, result.failedFiles, selectedCategories);
+      this.showRestoreResult(
+        result.restoredFiles,
+        result.failedFiles,
+        selectedCategories,
+        normalizedRestoreMode,
+        result.deletedFiles || 0
+      );
     } catch (error) {
       spinner.fail("恢复操作失败");
       throw error;
@@ -535,11 +634,19 @@ class RestoreManager {
    * @param {Object} backupData 备份数据
    * @param {Array} selectedCategories 选择的类别
    * @param {Object} spinner spinner
-   * @returns {{restoredFiles:number,failedFiles:number}} 恢复结果
+   * @param {"merge"|"mirror"} restoreMode 恢复模式
+   * @returns {{restoredFiles:number,failedFiles:number,deletedFiles:number}} 恢复结果
    */
-  async restoreV3Entries(backupData, selectedCategories, spinner) {
+  async restoreV3Entries(
+    backupData,
+    selectedCategories,
+    spinner,
+    restoreMode = RESTORE_MODES.MERGE
+  ) {
     let restoredFiles = 0;
     let failedFiles = 0;
+    let deletedFiles = 0;
+    const normalizedRestoreMode = this.normalizeRestoreMode(restoreMode);
 
     for (const category of selectedCategories) {
       const categoryData = backupData.categories[category];
@@ -569,6 +676,17 @@ class RestoreManager {
       const blockedTargets = await this.detectBlockedRestoreTargets(pendingEntries);
       const reportedBlockedPaths = new Set();
 
+      if (this.isMirrorRestore(normalizedRestoreMode)) {
+        const cleanupResult = await this.cleanupMirrorDirectoryTargets(
+          categoryData,
+          currentPaths,
+          pendingEntries,
+          blockedTargets
+        );
+        deletedFiles += cleanupResult.deletedFiles;
+        failedFiles += cleanupResult.failedFiles;
+      }
+
       for (const { entry, targetPath } of pendingEntries) {
         const blocked = blockedTargets.get(targetPath);
         if (blocked) {
@@ -595,7 +713,221 @@ class RestoreManager {
       }
     }
 
-    return { restoredFiles, failedFiles };
+    return { restoredFiles, failedFiles, deletedFiles };
+  }
+
+  /**
+   * 清理镜像恢复目录中备份不存在的额外文件
+   * @param {Object} categoryData 类别数据
+   * @param {Object} currentPaths 当前类别路径信息
+   * @param {Array<{entry:Object,targetPath:string}>} pendingEntries 待恢复条目
+   * @param {Map<string,{path:string,message:string}>} blockedTargets 被阻塞的目标路径
+   * @returns {Promise<{deletedFiles:number,failedFiles:number}>} 清理结果
+   */
+  async cleanupMirrorDirectoryTargets(
+    categoryData,
+    currentPaths,
+    pendingEntries,
+    blockedTargets
+  ) {
+    let deletedFiles = 0;
+    let failedFiles = 0;
+    const cleanedTargetDirs = new Set();
+    const blockedPathSet = new Set(
+      Array.from(blockedTargets.values()).map((blocked) => path.resolve(blocked.path))
+    );
+
+    for (const directoryEntry of categoryData.entries || []) {
+      if (directoryEntry.entryType !== "directory") {
+        continue;
+      }
+
+      const targetDir = this.resolveEntryTargetPath(currentPaths, directoryEntry);
+      if (!targetDir) {
+        console.warn(chalk.yellow(`⚠️ 无法映射镜像恢复目录: ${directoryEntry.key}`));
+        continue;
+      }
+
+      const resolvedTargetDir = path.resolve(targetDir);
+      if (cleanedTargetDirs.has(resolvedTargetDir)) {
+        continue;
+      }
+      cleanedTargetDirs.add(resolvedTargetDir);
+
+      const expectedFilePaths = new Set(
+        pendingEntries
+          .filter(({ entry, targetPath }) => {
+            return (
+              entry.key === directoryEntry.key &&
+              this.isSameOrSubPath(path.resolve(targetPath), resolvedTargetDir)
+            );
+          })
+          .map(({ targetPath }) => path.resolve(targetPath))
+      );
+
+      try {
+        const result = await this.cleanupMirrorDirectory(
+          targetDir,
+          expectedFilePaths,
+          blockedPathSet
+        );
+        deletedFiles += result.deletedFiles;
+        failedFiles += result.failedFiles;
+      } catch (error) {
+        console.error(
+          chalk.red(`❌ 镜像恢复清理目录失败 ${directoryEntry.key}:`, error.message)
+        );
+        failedFiles++;
+      }
+    }
+
+    return { deletedFiles, failedFiles };
+  }
+
+  /**
+   * 清理单个镜像恢复目录
+   * @param {string} targetDir 目录目标
+   * @param {Set<string>} expectedFilePaths 备份中存在的目标文件路径
+   * @param {Set<string>} blockedPathSet 需要保留的阻塞路径
+   * @returns {Promise<{deletedFiles:number,failedFiles:number}>} 清理结果
+   */
+  async cleanupMirrorDirectory(targetDir, expectedFilePaths, blockedPathSet) {
+    let stat;
+    try {
+      stat = await fs.stat(targetDir);
+    } catch (error) {
+      if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+        return { deletedFiles: 0, failedFiles: 0 };
+      }
+      throw error;
+    }
+
+    if (!stat.isDirectory()) {
+      console.warn(chalk.yellow(`⚠️ 镜像恢复目录目标不是目录，已跳过清理: ${targetDir}`));
+      return { deletedFiles: 0, failedFiles: 0 };
+    }
+
+    return this.cleanupMirrorDirectoryItems(
+      path.resolve(targetDir),
+      targetDir,
+      expectedFilePaths,
+      blockedPathSet
+    );
+  }
+
+  /**
+   * 递归删除目录中不属于备份的额外文件
+   * @param {string} rootDir 镜像恢复根目录
+   * @param {string} currentDir 当前目录
+   * @param {Set<string>} expectedFilePaths 备份中存在的目标文件路径
+   * @param {Set<string>} blockedPathSet 需要保留的阻塞路径
+   * @returns {Promise<{deletedFiles:number,failedFiles:number}>} 清理结果
+   */
+  async cleanupMirrorDirectoryItems(
+    rootDir,
+    currentDir,
+    expectedFilePaths,
+    blockedPathSet
+  ) {
+    let deletedFiles = 0;
+    let failedFiles = 0;
+    const items = await fs.readdir(currentDir, { withFileTypes: true });
+
+    for (const item of items) {
+      const itemPath = path.join(currentDir, item.name);
+      const resolvedItemPath = path.resolve(itemPath);
+
+      if (!this.isSameOrSubPath(resolvedItemPath, rootDir)) {
+        continue;
+      }
+
+      if (item.isDirectory()) {
+        if (this.pathOverlapsCurrentSnapshot(resolvedItemPath)) {
+          continue;
+        }
+
+        const result = await this.cleanupMirrorDirectoryItems(
+          rootDir,
+          itemPath,
+          expectedFilePaths,
+          blockedPathSet
+        );
+        deletedFiles += result.deletedFiles;
+        failedFiles += result.failedFiles;
+        continue;
+      }
+
+      if (
+        this.shouldPreserveMirrorFile(
+          resolvedItemPath,
+          expectedFilePaths,
+          blockedPathSet
+        )
+      ) {
+        continue;
+      }
+
+      try {
+        await fs.remove(itemPath);
+        deletedFiles++;
+        console.log(chalk.gray(`🗑️ 删除额外文件: ${itemPath}`));
+      } catch (error) {
+        console.error(chalk.red(`❌ 删除额外文件失败 ${itemPath}:`, error.message));
+        failedFiles++;
+      }
+    }
+
+    return { deletedFiles, failedFiles };
+  }
+
+  /**
+   * 判断镜像恢复中是否需要保留当前文件
+   * @param {string} targetPath 目标路径
+   * @param {Set<string>} expectedFilePaths 备份中存在的目标文件路径
+   * @param {Set<string>} blockedPathSet 需要保留的阻塞路径
+   * @returns {boolean} 是否保留
+   */
+  shouldPreserveMirrorFile(targetPath, expectedFilePaths, blockedPathSet) {
+    return (
+      expectedFilePaths.has(targetPath) ||
+      blockedPathSet.has(targetPath) ||
+      this.hasExpectedFileDescendant(targetPath, expectedFilePaths) ||
+      this.pathOverlapsCurrentSnapshot(targetPath)
+    );
+  }
+
+  /**
+   * 判断路径下是否存在备份目标文件
+   * @param {string} targetPath 目标路径
+   * @param {Set<string>} expectedFilePaths 备份中存在的目标文件路径
+   * @returns {boolean} 是否存在后代目标文件
+   */
+  hasExpectedFileDescendant(targetPath, expectedFilePaths) {
+    for (const expectedFilePath of expectedFilePaths) {
+      if (this.isSameOrSubPath(expectedFilePath, targetPath)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 判断路径是否与当前恢复前快照重叠
+   * @param {string} targetPath 目标路径
+   * @returns {boolean} 是否与当前快照重叠
+   */
+  pathOverlapsCurrentSnapshot(targetPath) {
+    if (!this.lastSnapshotPath) {
+      return false;
+    }
+
+    const resolvedTargetPath = path.resolve(targetPath);
+    const resolvedSnapshotPath = path.resolve(this.lastSnapshotPath);
+    return (
+      this.isSameOrSubPath(resolvedTargetPath, resolvedSnapshotPath) ||
+      this.isSameOrSubPath(resolvedSnapshotPath, resolvedTargetPath)
+    );
   }
 
   /**
@@ -975,11 +1307,24 @@ class RestoreManager {
    * @param {number} restoredFiles 成功恢复的文件数
    * @param {number} failedFiles 失败的文件数
    * @param {Array} selectedCategories 恢复的类别
+   * @param {"merge"|"mirror"} restoreMode 恢复模式
+   * @param {number} deletedFiles 删除的额外文件数
    */
-  showRestoreResult(restoredFiles, failedFiles, selectedCategories) {
+  showRestoreResult(
+    restoredFiles,
+    failedFiles,
+    selectedCategories,
+    restoreMode = RESTORE_MODES.MERGE,
+    deletedFiles = 0
+  ) {
     console.log(chalk.green("\n🎉 恢复操作执行完成！"));
     console.log(chalk.gray(`恢复类别: ${selectedCategories.join(", ")}`));
+    console.log(chalk.gray(`恢复模式: ${this.getRestoreModeLabel(restoreMode)}`));
     console.log(chalk.gray(`成功恢复: ${restoredFiles} 个文件`));
+
+    if (deletedFiles > 0) {
+      console.log(chalk.yellow(`镜像删除: ${deletedFiles} 个额外文件`));
+    }
 
     if (failedFiles > 0) {
       console.log(chalk.yellow(`失败文件: ${failedFiles} 个`));

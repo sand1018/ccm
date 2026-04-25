@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import inquirer from "inquirer";
 
 import RestoreManager from "../src/commands/backup/restore.js";
 
@@ -381,6 +382,241 @@ test("RestoreManager 会为 Claude MCP 合并恢复生成明确提示", () => {
   assert.ok(
     notes.includes("Claude MCP 将只合并恢复 ~/.claude.json 的根级 mcpServers，不会整文件覆盖其他字段")
   );
+});
+
+test("RestoreManager 会为镜像恢复生成快照和删除风险提示", () => {
+  const manager = new RestoreManager();
+
+  const notes = manager.buildRestoreNotes(
+    {
+      categories: {
+        codex: {
+          entries: [
+            {
+              entryType: "directory",
+              key: "codex.prompts",
+            },
+          ],
+        },
+      },
+    },
+    ["codex"],
+    "mirror"
+  );
+
+  assert.ok(
+    notes.includes("镜像恢复会删除目录目标中备份不存在的额外文件；恢复执行前会先创建恢复前快照")
+  );
+});
+
+test("RestoreManager 恢复模式选择默认合并恢复", async () => {
+  const manager = new RestoreManager();
+  const originalPrompt = inquirer.prompt;
+  let receivedQuestions;
+
+  inquirer.prompt = async (questions) => {
+    receivedQuestions = questions;
+    return { restoreMode: "merge" };
+  };
+
+  try {
+    const restoreMode = await manager.selectRestoreMode();
+
+    assert.equal(restoreMode, "merge");
+    assert.equal(receivedQuestions[0].default, "merge");
+    assert.deepEqual(
+      receivedQuestions[0].choices.map((choice) => choice.value),
+      ["merge", "mirror"]
+    );
+  } finally {
+    inquirer.prompt = originalPrompt;
+  }
+});
+
+test("RestoreManager 默认以合并模式恢复目录文件并保留额外文件", async () => {
+  const manager = new RestoreManager();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-restore-merge-mode-"));
+  const promptsDir = path.join(tempDir, "prompts");
+  const extraFile = path.join(promptsDir, "local-only.md");
+  const restoredFile = path.join(promptsDir, "team", "welcome.md");
+
+  await fs.mkdir(path.dirname(restoredFile), { recursive: true });
+  await fs.writeFile(extraFile, "local");
+
+  manager.fileManager.getCategoryPaths = () => ({
+    name: "Codex配置",
+    entries: [
+      {
+        type: "directory",
+        key: "codex.prompts",
+        path: promptsDir,
+      },
+    ],
+  });
+
+  const backupData = {
+    categories: {
+      codex: {
+        name: "Codex配置",
+        entries: [
+          {
+            entryType: "directory",
+            key: "codex.prompts",
+            portablePath: "~/.codex/prompts",
+            relativePath: ".",
+          },
+          {
+            entryType: "file",
+            key: "codex.prompts",
+            portableRootPath: "~/.codex/prompts",
+            relativePath: path.posix.join("team", "welcome.md"),
+            contentBase64: Buffer.from("backup").toString("base64"),
+          },
+        ],
+      },
+    },
+  };
+
+  try {
+    const result = await manager.restoreV3Entries(backupData, ["codex"], { text: "" });
+
+    assert.equal(result.restoredFiles, 1);
+    assert.equal(result.failedFiles, 0);
+    assert.equal(await fs.readFile(restoredFile, "utf8"), "backup");
+    assert.equal(await fs.readFile(extraFile, "utf8"), "local");
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("RestoreManager 镜像恢复会删除目录目标里备份不存在的额外文件", async () => {
+  const manager = new RestoreManager();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-restore-mirror-mode-"));
+  const promptsDir = path.join(tempDir, "prompts");
+  const extraFile = path.join(promptsDir, "local-only.md");
+  const outsideFile = path.join(tempDir, "outside.md");
+  const restoredFile = path.join(promptsDir, "team", "welcome.md");
+
+  await fs.mkdir(path.dirname(restoredFile), { recursive: true });
+  await fs.writeFile(extraFile, "local");
+  await fs.writeFile(outsideFile, "outside");
+
+  manager.fileManager.getCategoryPaths = () => ({
+    name: "Codex配置",
+    entries: [
+      {
+        type: "directory",
+        key: "codex.prompts",
+        path: promptsDir,
+      },
+    ],
+  });
+
+  const backupData = {
+    categories: {
+      codex: {
+        name: "Codex配置",
+        entries: [
+          {
+            entryType: "directory",
+            key: "codex.prompts",
+            portablePath: "~/.codex/prompts",
+            relativePath: ".",
+          },
+          {
+            entryType: "file",
+            key: "codex.prompts",
+            portableRootPath: "~/.codex/prompts",
+            relativePath: path.posix.join("team", "welcome.md"),
+            contentBase64: Buffer.from("backup").toString("base64"),
+          },
+        ],
+      },
+    },
+  };
+
+  try {
+    const result = await manager.restoreV3Entries(
+      backupData,
+      ["codex"],
+      { text: "" },
+      "mirror"
+    );
+
+    assert.equal(result.restoredFiles, 1);
+    assert.equal(result.failedFiles, 0);
+    assert.equal(result.deletedFiles, 1);
+    assert.equal(await fs.readFile(restoredFile, "utf8"), "backup");
+    assert.equal(await fs.readFile(outsideFile, "utf8"), "outside");
+    await assert.rejects(fs.access(extraFile));
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("RestoreManager 镜像恢复不会清理当前恢复前快照目录", async () => {
+  const manager = new RestoreManager();
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ccm-restore-mirror-snapshot-"));
+  const ccmDir = path.join(tempDir, ".ccm");
+  const snapshotFile = path.join(
+    ccmDir,
+    "restore-snapshots",
+    "2026-04-25T00-00-00-000Z",
+    "snapshot-manifest.json"
+  );
+  const extraFile = path.join(ccmDir, "local-only.json");
+  const restoredFile = path.join(ccmDir, "api_configs.json");
+
+  await fs.mkdir(path.dirname(snapshotFile), { recursive: true });
+  await fs.writeFile(snapshotFile, "{}");
+  await fs.writeFile(extraFile, "{}");
+  manager.lastSnapshotPath = path.dirname(snapshotFile);
+
+  manager.fileManager.getCategoryPaths = () => ({
+    name: "CCM配置",
+    entries: [
+      {
+        type: "directory",
+        key: "ccm.configDir",
+        path: ccmDir,
+      },
+    ],
+  });
+
+  const backupData = {
+    categories: {
+      ccm: {
+        name: "CCM配置",
+        entries: [
+          {
+            entryType: "directory",
+            key: "ccm.configDir",
+            portablePath: "~/.ccm",
+            relativePath: ".",
+          },
+          {
+            entryType: "file",
+            key: "ccm.configDir",
+            portableRootPath: "~/.ccm",
+            relativePath: "api_configs.json",
+            contentBase64: Buffer.from('{"sites":{}}').toString("base64"),
+          },
+        ],
+      },
+    },
+  };
+
+  try {
+    const result = await manager.restoreV3Entries(backupData, ["ccm"], { text: "" }, "mirror");
+
+    assert.equal(result.restoredFiles, 1);
+    assert.equal(result.failedFiles, 0);
+    assert.equal(await fs.readFile(restoredFile, "utf8"), '{"sites":{}}');
+    assert.equal(await fs.readFile(snapshotFile, "utf8"), "{}");
+    await assert.rejects(fs.access(extraFile));
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("RestoreManager 会把可移植路径中的反斜杠拆成跨平台路径段", () => {
