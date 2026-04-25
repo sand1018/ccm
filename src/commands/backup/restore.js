@@ -854,6 +854,17 @@ class RestoreManager {
         );
         deletedFiles += result.deletedFiles;
         failedFiles += result.failedFiles;
+
+        // 递归清理后，移除已清空的多余目录
+        try {
+          const remaining = await fs.readdir(itemPath);
+          if (remaining.length === 0) {
+            await fs.remove(itemPath);
+          }
+        } catch {
+          // 目录可能已不存在，忽略
+        }
+
         continue;
       }
 
