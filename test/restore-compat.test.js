@@ -426,7 +426,7 @@ test("RestoreManager 恢复模式选择默认合并恢复", async () => {
     assert.equal(receivedQuestions[0].default, "merge");
     assert.deepEqual(
       receivedQuestions[0].choices.map((choice) => choice.value),
-      ["merge", "mirror"]
+      ["merge", "mirror", null]
     );
   } finally {
     inquirer.prompt = originalPrompt;
