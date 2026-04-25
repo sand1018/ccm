@@ -4,6 +4,11 @@ docs/
 test/
 .git/
 .github/
+.trellis/
+.agents/
+.claude/
+.codex/
+.cursor/
 .gitignore
 
 # 依赖
