@@ -39,10 +39,6 @@ class BackupManager {
       }
 
       const backupFileName = await this.selectBackupFileName(selectedCategories);
-      if (!backupFileName) {
-        console.log(chalk.yellow("ℹ️ 用户取消备份"));
-        return;
-      }
 
       const confirmed = await this.confirmBackup(selectedCategories, backupFileName);
       if (!confirmed) {
@@ -113,13 +109,6 @@ class BackupManager {
       },
     ];
 
-    categories.push(new inquirer.Separator());
-    categories.push({
-      name: "取消操作",
-      value: "__cancel__",
-      short: "取消",
-    });
-
     const { selectedCategories } = await inquirer.prompt([
       {
         type: "checkbox",
@@ -127,22 +116,13 @@ class BackupManager {
         message: "请选择要备份的配置类别：",
         choices: categories,
         validate: (input) => {
-          if (input.includes("__cancel__")) {
-            return true;
-          }
-
           if (input.length === 0) {
-            return "请至少选择一个配置类别，或选择取消操作";
+            return "请至少选择一个配置类别";
           }
-
           return true;
         },
       },
     ]);
-
-    if (selectedCategories.includes("__cancel__")) {
-      return [];
-    }
 
     return selectedCategories;
   }
@@ -150,7 +130,7 @@ class BackupManager {
   /**
    * 选择备份文件名
    * @param {Array} selectedCategories 选择的类别
-   * @returns {string|null} 备份文件名，取消时返回 null
+   * @returns {string} 备份文件名
    */
   async selectBackupFileName(selectedCategories) {
     const defaultFileName = this.generateBackupFileName(selectedCategories);
@@ -171,19 +151,10 @@ class BackupManager {
             value: "custom",
             short: "自定义名称",
           },
-          {
-            name: "取消操作",
-            value: null,
-            short: "取消",
-          },
         ],
         default: "default",
       },
     ]);
-
-    if (fileNameMode === null) {
-      return null;
-    }
 
     if (fileNameMode === "default") {
       return defaultFileName;

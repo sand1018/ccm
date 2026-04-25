@@ -52,10 +52,6 @@ class RestoreManager {
       }
 
       const restoreMode = await this.selectRestoreMode();
-      if (restoreMode === null) {
-        console.log(chalk.yellow("ℹ️ 用户取消恢复操作"));
-        return;
-      }
       const confirmed = await this.confirmRestore(
         selectedBackup,
         selectedCategories,
@@ -217,13 +213,6 @@ class RestoreManager {
       checked: false,
     }));
 
-    choices.push(new inquirer.Separator());
-    choices.push({
-      name: "取消操作",
-      value: "__cancel__",
-      short: "取消",
-    });
-
     const { selectedCategories } = await inquirer.prompt([
       {
         type: "checkbox",
@@ -231,29 +220,20 @@ class RestoreManager {
         message: "请选择要恢复的配置类别 (空格选择/取消选择):",
         choices,
         validate: (input) => {
-          if (input.includes("__cancel__")) {
-            return true;
-          }
-
           if (input.length === 0) {
-            return "请至少选择一个配置类别，或选择取消操作";
+            return "请至少选择一个配置类别";
           }
-
           return true;
         },
       },
     ]);
-
-    if (selectedCategories.includes("__cancel__")) {
-      return [];
-    }
 
     return selectedCategories;
   }
 
   /**
    * 选择恢复模式
-   * @returns {"merge"|"mirror"|null} 恢复模式，取消时返回 null
+   * @returns {"merge"|"mirror"} 恢复模式
    */
   async selectRestoreMode() {
     const { restoreMode } = await inquirer.prompt([
@@ -273,18 +253,9 @@ class RestoreManager {
             value: RESTORE_MODES.MIRROR,
             short: "镜像恢复",
           },
-          {
-            name: "取消操作",
-            value: null,
-            short: "取消",
-          },
         ],
       },
     ]);
-
-    if (restoreMode === null) {
-      return null;
-    }
 
     return this.normalizeRestoreMode(restoreMode);
   }
