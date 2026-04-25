@@ -1,6 +1,7 @@
 import "./backup-manifest.test.js";
 import "./file-manager.test.js";
 import "./backup-format.test.js";
+import "./backup-manage.test.js";
 import "./cli-smoke.test.js";
 import "./codex-command.test.js";
 import "./config-manager.test.js";

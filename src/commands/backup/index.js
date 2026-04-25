@@ -26,6 +26,9 @@ class BackupCommand {
           case 'restore':
             await this.handleRestore();
             break;
+          case 'manage':
+            await this.handleManage();
+            break;
           case 'status':
             await this.handleStatus();
             break;
@@ -77,6 +80,11 @@ class BackupCommand {
         short: '恢复数据'
       },
       {
+        name: '🗂️ 管理备份 - 多选删除云端备份',
+        value: 'manage',
+        short: '管理备份'
+      },
+      {
         name: '📊 备份状态 - 查看备份历史和状态',
         value: 'status',
         short: '备份状态'
@@ -126,6 +134,22 @@ class BackupCommand {
       await this.waitForBack();
     } catch (error) {
       console.error(chalk.red('❌ 恢复失败:'), error.message);
+      await this.waitForBack();
+    }
+  }
+
+  /**
+   * 处理备份管理
+   */
+  async handleManage() {
+    try {
+      const { default: BackupManageManager } = await import('./manage.js');
+      const backupManageManager = new BackupManageManager();
+
+      await backupManageManager.performBackupManagement();
+      await this.waitForBack();
+    } catch (error) {
+      console.error(chalk.red('❌ 管理备份失败:'), error.message);
       await this.waitForBack();
     }
   }
@@ -214,6 +238,7 @@ class BackupCommand {
     console.log(chalk.gray('• ✅ 本地备份数据收集'));
     console.log(chalk.gray('• ✅ WebDAV云端备份'));
     console.log(chalk.gray('• ✅ 选择性配置恢复'));
+    console.log(chalk.gray('• ✅ 云端备份多选删除'));
     console.log(chalk.gray('• ✅ 自动清理旧备份 (保留20个)'));
   }
 
